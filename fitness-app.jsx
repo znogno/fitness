@@ -63,6 +63,7 @@ const mkScores = () => Array.from({length:18}, ()=>({score:"", putts:""}));
 const normalizeWorkoutExercises = (exs) => exs.map((ex, idx) => ({
   ...ex,
   id: ex.id || `ex-${Date.now()}-${idx}`,
+  target: ex.target ?? ex.sets.length,
 }));
 
 export default function App() {
@@ -126,7 +127,7 @@ export default function App() {
   const photoRef   = useRef(null);
   const galleryRef = useRef(null);
 
-  const [notifs, setNotifs] = useState({workout:true,rest:true,weekly:false,golf:true});
+  const [notifs, setNotifs] = useState({workout:false,rest:false,weekly:false,golf:false});
 
   useEffect(() => {
     if (timerOn && timerDisp > 0) {
@@ -134,7 +135,7 @@ export default function App() {
         setTimerDisp(p => {
           if (p <= 1) {
             setTimerOn(false);
-            notifyRestComplete();
+            if (notifs.rest) notifyRestComplete();
             toast2("⏱ 휴식 완료! 다음 세트!");
             return 0;
           }
@@ -143,7 +144,7 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(timerRef.current);
-  }, [timerOn]);
+  }, [timerOn, notifs.rest]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,7 +178,54 @@ export default function App() {
       osc.onended = () => ctx.close();
     }
   };
-  const fmt    = (s)   => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  const parseDurationToMinutes = (str) => {
+    if (!str) return 0;
+    const hourMatch = str.match(/(\d+)\s*h/i);
+    const minuteMatch = str.match(/(\d+)\s*분/i);
+    let minutes = 0;
+    if (hourMatch) {
+      minutes += parseInt(hourMatch[1], 10) * 60;
+    }
+    if (minuteMatch) {
+      minutes += parseInt(minuteMatch[1], 10);
+    }
+    if (!hourMatch && !minuteMatch) {
+      const numeric = parseInt(str, 10);
+      if (!isNaN(numeric)) minutes = numeric;
+    }
+    return minutes;
+  };
+  const formatMinutes = (minutes) => {
+    if (!minutes) return "0분";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    return `${m}분`;
+  };
+  const today = new Date();
+  const thisMonthRecords = records.filter(r => {
+    if (!r.date) return false;
+    const d = new Date(r.date);
+    return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+  });
+  const monthlyCount = thisMonthRecords.length;
+  const totalMinutes = thisMonthRecords.reduce((sum, r) => sum + parseDurationToMinutes(r.duration), 0);
+  const totalTimeLabel = formatMinutes(totalMinutes);
+  const recordDateSet = new Set(records.map(r => r.date).filter(Boolean));
+  const getCurrentStreak = () => {
+    if (recordDateSet.size === 0) return 0;
+    const sortedDates = [...recordDateSet].sort();
+    let lastDate = sortedDates[sortedDates.length - 1];
+    let streak = 0;
+    const normalize = (date) => new Date(new Date(date).getFullYear(), new Date(date).getMonth(), new Date(date).getDate());
+    let current = normalize(lastDate);
+    while (recordDateSet.has(current.toISOString().slice(0,10))) {
+      streak += 1;
+      current = new Date(current.getFullYear(), current.getMonth(), current.getDate() - 1);
+    }
+    return streak;
+  };
+  const currentStreak = getCurrentStreak();
   const pct    = (timerDisp / timerSec) * 100;
   const go     = (tab, sub=null) => { setActiveTab(tab); setSubView(sub); setSelRec(null); };
 
@@ -193,7 +241,8 @@ export default function App() {
 
   const totalSets = () => Object.values(exCounters).reduce((a,b)=>a+b,0);
   const elapsed   = () => Math.max(1, Math.floor((new Date()-startTime.current)/60000));
-  const addWorkoutExercise = () => setWorkoutExercises(p => [...p, {id:`ex-${Date.now()}-${p.length}`,name:"새 운동",sets:[{weight:null,reps:0}]}]);
+  const addWorkoutExercise = () => setWorkoutExercises(p => [...p, {id:`ex-${Date.now()}-${p.length}`,name:"",target:1,sets:[{weight:null,reps:0}]}]);
+  const updateWorkoutExercise = (id, field, value) => setWorkoutExercises(p => p.map(ex => ex.id===id ? {...ex,[field]:value} : ex));
   const removeWorkoutExercise = (id) => {
     setWorkoutExercises(p => p.filter(ex => ex.id !== id));
     setExCounters(p => {
@@ -383,7 +432,7 @@ export default function App() {
         {activeTab==="home"&&subView===null&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22}}>
-              {[{l:"이번달",v:"11회",c:org},{l:"총 시간",v:"14h",c:grn},{l:"연속",v:"4일",c:"#60A5FA"}].map(s=>(
+              {[{l:"이번달",v:`${monthlyCount}회`,c:org},{l:"총 시간",v:totalTimeLabel,c:grn},{l:"연속",v:`${currentStreak}일`,c:"#60A5FA"}].map(s=>(
                 <div key={s.l} style={{background:crd,borderRadius:16,padding:"16px 12px",border:`1px solid ${bdr}`}}>
                   <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:F}}>{s.v}</div>
                   <div style={{fontSize:11,color:sub,marginTop:4,fontWeight:600,fontFamily:F}}>{s.l}</div>
@@ -581,7 +630,7 @@ export default function App() {
                 </div>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
-                {[60,90,120,180].map(s=>(
+                {[30,60,75,90,120,180].map(s=>(
                   <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
                 ))}
               </div>
@@ -594,15 +643,22 @@ export default function App() {
               <SL>종목별 세트 카운터</SL>
               {workoutExercises.map((ex,i)=>{
                 const cnt  = exCounters[ex.id]||0;
-                const done = cnt>=ex.sets.length;
+                const target = ex.target || ex.sets.length;
+                const done = cnt>=target;
                 return(
                   <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
-                    <div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{fontSize:14,fontWeight:700,fontFamily:F,color:done?grn:tc}}>{done?"✓ ":""}{ex.name}</div>
-                        <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"2px 8px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                    <div style={{width:"65%"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
+                          style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F}}/>
+                        <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"6px 10px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
                       </div>
-                      <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>목표 {ex.sets.length}세트{ex.sets[0]?.weight?` · ${ex.sets[0].weight}kg`:""}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                        <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
+                        <input type="number" min={1} value={target} onChange={e=>updateWorkoutExercise(ex.id,"target",Math.max(1,parseInt(e.target.value)||1))}
+                          style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F,textAlign:"center"}}/>
+                        <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
+                      </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>−</button>
@@ -663,9 +719,9 @@ export default function App() {
             <button onClick={()=>setSubView(null)} style={{background:"none",border:"none",color:grn,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
             <Crd style={{border:`1px solid rgba(34,197,94,0.2)`}}>
               <SL>라운드 정보</SL>
-              <div style={{width:"100%",marginBottom:10}}>
+              <div style={{width:"100%",marginBottom:10,minWidth:0}}>
                 <input type="text" value={course} onChange={e=>setCourse(e.target.value)} placeholder="골프장 이름 입력"
-                  style={{...dateInputStyle, background:isLight?"#F5F5F0":"#1A1A1C", color:tc, border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`}}/>
+                  style={{...dateInputStyle, width:"100%",maxWidth:"100%",minWidth:0, background:isLight?"#F5F5F0":"#1A1A1C", color:tc, border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`}}/>
               </div>
               <div style={{width:"100%",overflow:"hidden"}}>
                 <input type="date" value={golfDate} onChange={e=>setGolfDate(e.target.value)}
