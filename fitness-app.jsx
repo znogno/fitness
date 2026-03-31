@@ -533,7 +533,7 @@ export default function App() {
 
             <SL>루틴 이름</SL>
             <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} placeholder="예: 상체 루틴, 하체 데이..."
-              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:14,fontWeight:600,marginBottom:20,fontFamily:F}}/>
+              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:20,fontFamily:F}}/>
 
             <SL>⭐ 즐겨찾기 종목</SL>
             <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:20}}>
@@ -618,38 +618,38 @@ export default function App() {
         {/* WORKOUT */}
         {activeTab==="workout"&&!workoutDone&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
+            <Crd>
+              <SL>휴식 타이머</SL>
+              <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+                <div style={{position:"relative",width:120,height:120}}>
+                  <svg width="120" height="120" style={{transform:"rotate(-90deg) scale(-1,1)",transformOrigin:"center"}}>
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
+                    <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
+                      strokeDasharray={2*Math.PI*52}
+                      strokeDashoffset={(2*Math.PI*52)*(1-pct/100)}
+                      strokeLinecap="round" style={{transition:"stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
+                  </svg>
+                  <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
+                {[30,60,90,120,180].map(s=>(
+                  <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
+                ))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <button onClick={()=>{if(!timerOn){setTimerDisp(timerSec);setTimerOn(true);}}} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"#1A1A1C":"linear-gradient(135deg,"+org+",#FF3A6E)",color:timerOn?"#444":"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>▶ 시작</button>
+                <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
+              </div>
+            </Crd>
             {workoutExercises.length===0 ? (
               <Crd style={{textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:800,fontFamily:F,marginBottom:10}}>운동 루틴이 없습니다.</div>
-                <div style={{fontSize:13,color:sub,lineHeight:1.6,marginBottom:20,fontFamily:F}}>운동 탭을 눌렀을 때 기본 루틴이 없으면 화면이 검게 보일 수 있어요. 먼저 기록 탭에서 루틴을 선택하거나 새 운동 기록을 추가해주세요.</div>
+                <div style={{fontSize:13,color:sub,lineHeight:1.6,marginBottom:20,fontFamily:F}}>먼저 기록 탭에서 루틴을 선택하거나 새 운동 기록을 추가해주세요.</div>
                 <button onClick={()=>go("record")} style={{padding:14,width:"100%",background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F}}>기록 탭으로 이동</button>
               </Crd>
             ) : (
               <div>
-                <Crd>
-                  <SL>휴식 타이머</SL>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
-                    <div style={{position:"relative",width:120,height:120}}>
-                      <svg width="120" height="120" style={{transform:"rotate(-90deg)"}}>
-                        <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
-                        <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
-                          strokeDasharray={2*Math.PI*52}
-                          strokeDashoffset={(2*Math.PI*52)*(1-pct/100)}
-                          strokeLinecap="round" style={{transition:"stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
-                      </svg>
-                      <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
-                    {[30,60,90,120,180].map(s=>(
-                      <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
-                    ))}
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <button onClick={()=>{if(!timerOn){setTimerDisp(timerSec);setTimerOn(true);}}} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"#1A1A1C":"linear-gradient(135deg,"+org+",#FF3A6E)",color:timerOn?"#444":"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>▶ 시작</button>
-                    <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
-                  </div>
-                </Crd>
                 <Crd>
                   <SL>종목별 세트 카운터</SL>
                   {workoutExercises.map((ex,i)=>{
@@ -662,13 +662,13 @@ export default function App() {
                         <div style={{width:"65%"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                             <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
-                              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F}}/>
+                              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:done?grn:tc,fontSize:16,fontFamily:F}}/>
                             <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"6px 10px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                             <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
                             <input type="number" min={1} value={targetRaw} onChange={e=>updateWorkoutExercise(ex.id,"target",e.target.value)} onBlur={e=>{ if (e.target.value.trim()==="") updateWorkoutExercise(ex.id,"target",1); }}
-                              style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F,textAlign:"center"}}/>
+                              style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:done?grn:tc,fontSize:16,fontFamily:F,textAlign:"center"}}/>
                             <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
                           </div>
                         </div>
