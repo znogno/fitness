@@ -626,7 +626,8 @@ export default function App() {
                     <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
                     <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
                       strokeDasharray={`${(2*Math.PI*52)*(pct/100)} ${2*Math.PI*52}`}
-                      strokeLinecap="round" style={{transition:"stroke-dasharray 0.8s ease,stroke 0.3s"}}/>
+                      strokeDashoffset={-(2*Math.PI*52)*(1-pct/100)}
+                      strokeLinecap="round" style={{transition:"stroke-dasharray 0.8s ease,stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
                   </svg>
                   <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
                 </div>
@@ -637,7 +638,7 @@ export default function App() {
                 ))}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <button onClick={()=>{if(!timerOn){setTimerDisp(timerSec);setTimerOn(true);}}} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"#1A1A1C":"linear-gradient(135deg,"+org+",#FF3A6E)",color:timerOn?"#444":"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>▶ 시작</button>
+                <button onClick={()=>setTimerOn(p=>!p)} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"linear-gradient(135deg,#444,#333)":"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>{timerOn?"⏸ 일시정지":"▶ 시작"}</button>
                 <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
               </div>
             </Crd>
