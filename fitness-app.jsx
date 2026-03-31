@@ -650,10 +650,10 @@ export default function App() {
                 <Crd>
                   <SL>종목별 세트 카운터</SL>
                   {workoutExercises.map((ex,i)=>{
-                    const cnt  = exCounters[ex.id]||0;
+                    const cnt = exCounters[ex.id]||0;
                     const target = ex.target || ex.sets.length;
                     const done = cnt>=target;
-                    return(
+                    return (
                       <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
                         <div style={{width:"65%"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
@@ -683,6 +683,8 @@ export default function App() {
                 </button>
               </div>
             )}
+          </div>
+        )}
 
         {/* GOLF HOME */}
         {activeTab==="golf"&&subView===null&&(
