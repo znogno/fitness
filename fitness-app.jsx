@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, createContext, useContext } from "react";
 const ThemeCtx = createContext({});
 const SL  = ({children}) => { const {sub,F}=useContext(ThemeCtx); return <div style={{fontSize:11,color:sub,fontWeight:700,letterSpacing:1.1,textTransform:"uppercase",marginBottom:12,fontFamily:F}}>{children}</div>; };
 const Crd = ({children,style={}}) => { const {crd,bdr}=useContext(ThemeCtx); return <div style={{background:crd,borderRadius:18,padding:18,border:`1px solid ${bdr}`,marginBottom:12,...style}}>{children}</div>; };
+const TB  = ({id,icon,label}) => { const {F,org,activeTab,go}=useContext(ThemeCtx); return <button onClick={()=>go(id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:0,fontFamily:F}}><div style={{fontSize:20,opacity:activeTab===id?1:0.28,transform:activeTab===id?"scale(1.15)":"scale(1)",transition:"all 0.2s"}}>{icon}</div><div style={{fontSize:10,fontWeight:700,color:activeTab===id?org:"#444",transition:"color 0.2s",fontFamily:F}}>{label}</div></button>; };
+const Tog = ({on,cb}) => { const {org}=useContext(ThemeCtx); return <button onClick={cb} style={{width:48,height:28,borderRadius:14,border:"none",cursor:"pointer",background:on?`linear-gradient(135deg,${org},#FF3A6E)`:"#252525",position:"relative",transition:"background 0.3s",flexShrink:0}}><div style={{position:"absolute",top:3,left:on?22:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left 0.3s",boxShadow:"0 1px 4px rgba(0,0,0,0.4)"}}/></button>; };
 
 const FONTS = [
   { id:"sf",        label:"SF Pro (기본)",          value:"-apple-system, BlinkMacSystemFont, sans-serif" },
@@ -335,17 +337,6 @@ export default function App() {
   const rootFontSize = (font.id==="nanumbrush" || font.id==="nanumpen") ? 15 : 14;
   const org = "#FF6B35"; const grn = "#22C55E";
 
-  const TB  = ({id,icon,label}) => (
-    <button onClick={()=>go(id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:0,fontFamily:F}}>
-      <div style={{fontSize:20,opacity:activeTab===id?1:0.28,transform:activeTab===id?"scale(1.15)":"scale(1)",transition:"all 0.2s"}}>{icon}</div>
-      <div style={{fontSize:10,fontWeight:700,color:activeTab===id?org:"#444",transition:"color 0.2s",fontFamily:F}}>{label}</div>
-    </button>
-  );
-  const Tog = ({on,cb}) => (
-    <button onClick={cb} style={{width:48,height:28,borderRadius:14,border:"none",cursor:"pointer",background:on?`linear-gradient(135deg,${org},#FF3A6E)`:"#252525",position:"relative",transition:"background 0.3s",flexShrink:0}}>
-      <div style={{position:"absolute",top:3,left:on?22:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left 0.3s",boxShadow:"0 1px 4px rgba(0,0,0,0.4)"}}/>
-    </button>
-  );
 
   // 날짜 input — 공통 스타일 (overflow fix)
   const dateInputStyle = {
@@ -372,7 +363,7 @@ export default function App() {
   const filtered = records.filter(r => recFilter==="all" || r.type===recFilter);
 
   return (
-    <ThemeCtx.Provider value={{sub,F,crd,bdr}}>
+    <ThemeCtx.Provider value={{sub,F,crd,bdr,org,activeTab,go}}>
     <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box",fontSize:rootFontSize}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Nanum+Pen+Script&family=Patrick+Hand&family=Gothic+A1:wght@400;600;700;900&family=Nunito:wght@400;600;700;800;900&display=swap');
