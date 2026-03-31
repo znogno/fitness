@@ -1,4 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
+
+const ThemeCtx = createContext({});
+const SL  = ({children}) => { const {sub,F}=useContext(ThemeCtx); return <div style={{fontSize:11,color:sub,fontWeight:700,letterSpacing:1.1,textTransform:"uppercase",marginBottom:12,fontFamily:F}}>{children}</div>; };
+const Crd = ({children,style={}}) => { const {crd,bdr}=useContext(ThemeCtx); return <div style={{background:crd,borderRadius:18,padding:18,border:`1px solid ${bdr}`,marginBottom:12,...style}}>{children}</div>; };
 
 const FONTS = [
   { id:"sf",        label:"SF Pro (기본)",          value:"-apple-system, BlinkMacSystemFont, sans-serif" },
@@ -331,8 +335,6 @@ export default function App() {
   const rootFontSize = (font.id==="nanumbrush" || font.id==="nanumpen") ? 15 : 14;
   const org = "#FF6B35"; const grn = "#22C55E";
 
-  const SL  = ({children}) => <div style={{fontSize:11,color:sub,fontWeight:700,letterSpacing:1.1,textTransform:"uppercase",marginBottom:12,fontFamily:F}}>{children}</div>;
-  const Crd = ({children,style={}}) => <div style={{background:crd,borderRadius:18,padding:18,border:`1px solid ${bdr}`,marginBottom:12,...style}}>{children}</div>;
   const TB  = ({id,icon,label}) => (
     <button onClick={()=>go(id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:0,fontFamily:F}}>
       <div style={{fontSize:20,opacity:activeTab===id?1:0.28,transform:activeTab===id?"scale(1.15)":"scale(1)",transition:"all 0.2s"}}>{icon}</div>
@@ -370,6 +372,7 @@ export default function App() {
   const filtered = records.filter(r => recFilter==="all" || r.type===recFilter);
 
   return (
+    <ThemeCtx.Provider value={{sub,F,crd,bdr}}>
     <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box",fontSize:rootFontSize}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Nanum+Pen+Script&family=Patrick+Hand&family=Gothic+A1:wght@400;600;700;900&family=Nunito:wght@400;600;700;800;900&display=swap');
@@ -897,5 +900,6 @@ export default function App() {
         <TB id="settings" icon="◈" label="설정"/>
       </div>
     </div>
+    </ThemeCtx.Provider>
   );
 }
