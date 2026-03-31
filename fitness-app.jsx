@@ -60,11 +60,29 @@ const SAMPLE_RECORDS = [
 
 const mkScores = () => Array.from({length:18}, ()=>({score:"", putts:""}));
 
+const normalizeWorkoutExercises = (exs) => exs.map((ex, idx) => ({
+  ...ex,
+  id: ex.id || `ex-${Date.now()}-${idx}`,
+}));
+
 export default function App() {
   const [font, setFont]           = useState(FONTS[0]);
   const [activeTab, setActiveTab] = useState("home");
   const [subView, setSubView]     = useState(null);
-  const [records, setRecords]     = useState(SAMPLE_RECORDS);
+  const [records, setRecords]     = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("fitness-records");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === SAMPLE_RECORDS.length && parsed.every((r,i) => r.id === SAMPLE_RECORDS[i].id && r.title === SAMPLE_RECORDS[i].title && r.type === SAMPLE_RECORDS[i].type)) {
+        return [];
+      }
+      return parsed;
+    } catch {
+      return [];
+    }
+  });
   const [selRec, setSelRec]       = useState(null);
   const [copiedId, setCopiedId]   = useState(null);
   const [toast, setToast]         = useState(null);
@@ -75,7 +93,7 @@ export default function App() {
   const [timerOn, setTimerOn]     = useState(false);
   const timerRef = useRef(null);
 
-  const [workoutExercises, setWorkoutExercises] = useState(SAMPLE_RECORDS[0].exercises);
+  const [workoutExercises, setWorkoutExercises] = useState([]);
   const [exCounters, setExCounters]             = useState({});
   const [workoutDone, setWorkoutDone]           = useState(false);
   const [workoutSubType, setWorkoutSubType]     = useState("upper");
@@ -84,23 +102,26 @@ export default function App() {
   const [newRec, setNewRec] = useState({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
   const [favs, setFavs]     = useState(DEFAULT_FAV);
 
-  const [course, setCourse]               = useState(null);
-  const [showCourseModal, setShowCourseModal] = useState(false);
-  const [golfCourses, setGolfCourses]     = useState(() => {
-    if (typeof window === "undefined") return GOLF_COURSES;
-    const raw = window.localStorage.getItem("fitness-golf-courses");
-    return raw ? JSON.parse(raw) : GOLF_COURSES;
-  });
+  const [course, setCourse]               = useState("");
   const [golfPars, setGolfPars]           = useState(Array(18).fill(4));
   const [scores, setScores]               = useState(mkScores());
   const [golfPhoto, setGolfPhoto]         = useState(null);
   const [golfNote, setGolfNote]           = useState("");
   const [golfDate, setGolfDate]           = useState(todayStr());
-  const [golfRounds, setGolfRounds]       = useState([
-    { id:1, date:"2026-03-22", course:"수원CC", score:92, diff:"+20" },
-    { id:2, date:"2026-03-15", course:"용인CC", score:90, diff:"+18" },
-    { id:3, date:"2026-03-08", course:"안성CC", score:94, diff:"+22" },
-  ]);
+  const [golfRounds, setGolfRounds]       = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("fitness-golf-rounds");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === 3 && parsed.every((r,i) => r.id === i+1 && typeof r.course === "string")) {
+        return [];
+      }
+      return parsed;
+    } catch {
+      return [];
+    }
+  });
   const [lightMode, setLightMode]         = useState(false);
   const photoRef   = useRef(null);
   const galleryRef = useRef(null);
@@ -126,8 +147,14 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem("fitness-golf-courses", JSON.stringify(golfCourses));
-  }, [golfCourses]);
+    window.localStorage.setItem("fitness-records", JSON.stringify(records));
+  }, [records]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("fitness-golf-rounds", JSON.stringify(golfRounds));
+  }, [golfRounds]);
+
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const notifyRestComplete = () => {
@@ -155,7 +182,7 @@ export default function App() {
   const go     = (tab, sub=null) => { setActiveTab(tab); setSubView(sub); setSelRec(null); };
 
   const handleStartWorkout = (r) => {
-    setWorkoutExercises(r.exercises);
+    setWorkoutExercises(normalizeWorkoutExercises(r.exercises));
     setWorkoutSubType(r.subType || "upper");
     setExCounters({});
     startTime.current = new Date();
@@ -166,6 +193,17 @@ export default function App() {
 
   const totalSets = () => Object.values(exCounters).reduce((a,b)=>a+b,0);
   const elapsed   = () => Math.max(1, Math.floor((new Date()-startTime.current)/60000));
+  const addWorkoutExercise = () => setWorkoutExercises(p => [...p, {id:`ex-${Date.now()}-${p.length}`,name:"새 운동",sets:[{weight:null,reps:0}]}]);
+  const removeWorkoutExercise = (id) => {
+    setWorkoutExercises(p => p.filter(ex => ex.id !== id));
+    setExCounters(p => {
+      const next = {};
+      for (const [key, value] of Object.entries(p)) {
+        if (key !== id) next[key] = value;
+      }
+      return next;
+    });
+  };
 
   const finishWorkout = () => {
     const d = new Date();
@@ -177,7 +215,7 @@ export default function App() {
       duration:`${elapsed()}분`,
       exercises: workoutExercises.map(ex=>({
         name:ex.name,
-        sets:Array.from({length:exCounters[ex.name]||0},(_,i)=>ex.sets[i]||{weight:null,reps:0}),
+        sets:Array.from({length:exCounters[ex.id]||0},(_,i)=>ex.sets[i]||{weight:null,reps:0}),
       })).filter(e=>e.name && e.sets.length>0),
     };
     setRecords(p=>[rec,...p]);
@@ -213,16 +251,6 @@ export default function App() {
     toast2("🗑️ 라운드가 삭제되었습니다.");
   };
 
-  const deleteGolfCourse = (id) => {
-    if (!window.confirm("이 골프장을 삭제하시겠어요?")) return;
-    setGolfCourses(p => p.filter(c => c.id !== id));
-    if (course?.id === id) {
-      setCourse(null);
-      setGolfPars(Array(18).fill(4));
-    }
-    toast2("🗑️ 골프장이 삭제되었습니다.");
-  };
-
   const golfRoundCount = golfRounds.length;
   const golfBestScore = golfRoundCount > 0 ? Math.min(...golfRounds.map(r => Number(r.score))) : null;
   const golfAvgScore = golfRoundCount > 0 ? Math.round(golfRounds.reduce((sum, r) => sum + Number(r.score), 0) / golfRoundCount) : null;
@@ -232,7 +260,6 @@ export default function App() {
   const totalPutts = scores.reduce((s,h)=>s+(parseInt(h.putts)||0),0);
   const diff       = totalScore - totalPar;
   const handlePhoto = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>setGolfPhoto(ev.target.result); r.readAsDataURL(f); };
-  const pickCourse  = (c) => { setCourse(c); setGolfPars([...c.pars]); setScores(mkScores()); setShowCourseModal(false); };
   const upScore     = (i,f,v) => setScores(p=>{const s=[...p];s[i]={...s[i],[f]:v};return s;});
   const upPar       = (i,v)   => setGolfPars(p=>{const ps=[...p];ps[i]=parseInt(v);return ps;});
   const scoreColor  = (sc,par) => { if(!sc) return tc; const d=parseInt(sc)-par; return d<0?grn:d===0?"#60A5FA":org; };
@@ -285,7 +312,6 @@ export default function App() {
   };
 
   const filtered = records.filter(r => recFilter==="all" || r.type===recFilter);
-  const regions  = [...new Set(golfCourses.map(c=>c.region))];
 
   return (
     <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box",fontSize:rootFontSize}}>
@@ -308,33 +334,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Course Modal */}
-      {showCourseModal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:1000,display:"flex",alignItems:"flex-end"}}>
-          <div style={{background:"#1A1A1C",borderRadius:"22px 22px 0 0",width:"100%",maxHeight:"72vh",display:"flex",flexDirection:"column"}}>
-            <div style={{padding:"18px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #2a2a2a",flexShrink:0}}>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:F}}>골프장 선택</div>
-              <button onClick={()=>setShowCourseModal(false)} style={{background:"none",border:"none",color:"#666",fontSize:20,cursor:"pointer"}}>✕</button>
-            </div>
-            <div style={{overflowY:"auto",padding:"10px 20px 40px"}}>
-              {regions.map(region=>(
-                <div key={region}>
-                  <div style={{fontSize:11,color:"#555",fontWeight:700,letterSpacing:1,marginTop:14,marginBottom:8,fontFamily:F}}>{region}</div>
-                  {golfCourses.filter(c=>c.region===region).map(c=>(
-                    <div key={c.id} onClick={()=>pickCourse(c)} style={{width:"100%",padding:"12px 16px",background:course?.id===c.id?"rgba(34,197,94,0.12)":"#222",border:`1px solid ${course?.id===c.id?"rgba(34,197,94,0.35)":"transparent"}`,borderRadius:12,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10}}>
-                        <span style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:F}}>{c.name}</span>
-                        <button type="button" onClick={(e)=>{e.stopPropagation(); deleteGolfCourse(c.id);}} style={{padding:"6px 10px",background:"rgba(255,107,53,0.12)",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
-                      </div>
-                      <span style={{fontSize:12,color:"#555",fontFamily:F}}>파 {c.pars.reduce((a,b)=>a+b,0)}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Workout Complete Modal */}
       {workoutDone&&activeTab==="workout"&&(
@@ -594,22 +593,26 @@ export default function App() {
             <Crd>
               <SL>종목별 세트 카운터</SL>
               {workoutExercises.map((ex,i)=>{
-                const cnt  = exCounters[ex.name]||0;
+                const cnt  = exCounters[ex.id]||0;
                 const done = cnt>=ex.sets.length;
                 return(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
+                  <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
                     <div>
-                      <div style={{fontSize:14,fontWeight:700,fontFamily:F,color:done?grn:tc}}>{done?"✓ ":""}{ex.name}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{fontSize:14,fontWeight:700,fontFamily:F,color:done?grn:tc}}>{done?"✓ ":""}{ex.name}</div>
+                        <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"2px 8px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                      </div>
                       <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>목표 {ex.sets.length}세트{ex.sets[0]?.weight?` · ${ex.sets[0].weight}kg`:""}</div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <button onClick={()=>setExCounters(p=>({...p,[ex.name]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>−</button>
+                      <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>−</button>
                       <span style={{fontSize:22,fontWeight:900,color:done?grn:org,fontFamily:F,minWidth:28,textAlign:"center"}}>{cnt}</span>
-                      <button onClick={()=>setExCounters(p=>({...p,[ex.name]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+                      <button onClick={()=>setExCounters(p=>({...p,[ex.id]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
                     </div>
                   </div>
                 );
               })}
+              <button onClick={addWorkoutExercise} style={{width:"100%",padding:14,background:"#141414",border:`1px dashed ${bdr}`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:14,fontFamily:F}}>+ 운동 추가</button>
             </Crd>
             <button onClick={finishWorkout} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>
               🏁 운동 완료 & 저장
@@ -660,10 +663,10 @@ export default function App() {
             <button onClick={()=>setSubView(null)} style={{background:"none",border:"none",color:grn,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
             <Crd style={{border:`1px solid rgba(34,197,94,0.2)`}}>
               <SL>라운드 정보</SL>
-              <button onClick={()=>setShowCourseModal(true)} style={{width:"100%",padding:"13px 16px",background:isLight?"#F5F5F0":"#1A1A1C",border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`,borderRadius:13,color:course?grn:sub,fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left",marginBottom:10,fontFamily:F,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span>{course?course.name:"⛳ 골프장 선택하기"}</span>
-                <span style={{color:"#444",fontSize:12}}>›</span>
-              </button>
+              <div style={{width:"100%",marginBottom:10}}>
+                <input type="text" value={course} onChange={e=>setCourse(e.target.value)} placeholder="골프장 이름 입력"
+                  style={{...dateInputStyle, background:isLight?"#F5F5F0":"#1A1A1C", color:tc, border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`}}/>
+              </div>
               <div style={{width:"100%",overflow:"hidden"}}>
                 <input type="date" value={golfDate} onChange={e=>setGolfDate(e.target.value)}
                   style={{...dateInputStyle, background:isLight?"#F5F5F0":"#1A1A1C", color:tc}}/>
