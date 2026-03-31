@@ -285,6 +285,7 @@ export default function App() {
   };
 
   const addEx  = ()     => setNewRec(p=>({...p,exercises:[...p.exercises,{name:"",sets:[{weight:"",reps:""}]}]}));
+  const delEx  = (ei)   => setNewRec(p=>({...p,exercises:p.exercises.filter((_,i)=>i!==ei)}));
   const addSet = (ei)   => setNewRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:[...e[ei].sets,{weight:"",reps:""}]};return{...p,exercises:e};});
   const upName = (ei,v) => setNewRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],name:v};return{...p,exercises:e};});
   const upSet  = (ei,si,f,v) => setNewRec(p=>{const e=[...p.exercises];const s=[...e[ei].sets];s[si]={...s[si],[f]:v};e[ei]={...e[ei],sets:s};return{...p,exercises:e};});
@@ -549,6 +550,7 @@ export default function App() {
                   <button onClick={()=>togFav(ex.name)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",flexShrink:0,padding:"4px"}}>
                     {favs.includes(ex.name)?"⭐":"☆"}
                   </button>
+                  <button onClick={()=>delEx(ei)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:13,cursor:"pointer",flexShrink:0,padding:"4px 8px",color:"#c0392b"}}>✕</button>
                 </div>
                 {ex.sets.map((set,si)=>(
                   <div key={si} style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
@@ -841,7 +843,7 @@ export default function App() {
                 <div style={{width:54,height:54,borderRadius:"50%",background:`linear-gradient(135deg,${org},#FF3A6E)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#fff"}}>J</div>
                 <div>
                   <div style={{fontSize:18,fontWeight:800,fontFamily:F}}>Jinho</div>
-                  <div style={{fontSize:12,color:sub,marginTop:2,fontFamily:F}}>🦁 헬스 · ⛳ 골프 · 4일 연속 🔥</div>
+                  <div style={{fontSize:12,color:sub,marginTop:2,fontFamily:F}}>🦁 헬스  ⛳ 골프 </div>
                 </div>
               </div>
             </Crd>
