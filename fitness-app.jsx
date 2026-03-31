@@ -63,7 +63,9 @@ const mkScores = () => Array.from({length:18}, ()=>({score:"", putts:""}));
 const normalizeWorkoutExercises = (exs) => exs.map((ex, idx) => ({
   ...ex,
   id: ex.id || `ex-${Date.now()}-${idx}`,
-  target: ex.target ?? ex.sets.length,
+  name: ex.name ?? "",
+  sets: Array.isArray(ex.sets) && ex.sets.length > 0 ? ex.sets : [{weight:null,reps:0}],
+  target: ex.target ?? (Array.isArray(ex.sets) ? ex.sets.length : 1),
 }));
 
 export default function App() {
@@ -242,7 +244,7 @@ export default function App() {
   const totalSets = () => Object.values(exCounters).reduce((a,b)=>a+b,0);
   const elapsed   = () => Math.max(1, Math.floor((new Date()-startTime.current)/60000));
   const addWorkoutExercise = () => setWorkoutExercises(p => [...p, {id:`ex-${Date.now()}-${p.length}`,name:"",target:1,sets:[{weight:null,reps:0}]}]);
-  const updateWorkoutExercise = (id, field, value) => setWorkoutExercises(p => p.map(ex => ex.id===id ? {...ex,[field]:value} : ex));
+  const updateWorkoutExercise = (id, field, value) => setWorkoutExercises(p => p.map(ex => ex.id===id ? {...ex,[field]:field === "target" ? value : value} : ex));
   const removeWorkoutExercise = (id) => {
     setWorkoutExercises(p => p.filter(ex => ex.id !== id));
     setExCounters(p => {
@@ -651,7 +653,8 @@ export default function App() {
                   <SL>종목별 세트 카운터</SL>
                   {workoutExercises.map((ex,i)=>{
                     const cnt = exCounters[ex.id]||0;
-                    const target = ex.target || ex.sets.length;
+                    const targetRaw = ex.target !== undefined ? ex.target : ex.sets.length;
+                    const target = Number(targetRaw) || ex.sets.length;
                     const done = cnt>=target;
                     return (
                       <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
@@ -663,7 +666,7 @@ export default function App() {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                             <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
-                            <input type="number" min={1} value={target} onChange={e=>updateWorkoutExercise(ex.id,"target",Math.max(1,parseInt(e.target.value)||1))}
+                            <input type="number" min={1} value={targetRaw} onChange={e=>updateWorkoutExercise(ex.id,"target",e.target.value)} onBlur={e=>{ if (e.target.value.trim()==="") updateWorkoutExercise(ex.id,"target",1); }}
                               style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F,textAlign:"center"}}/>
                             <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
                           </div>
