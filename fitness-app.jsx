@@ -828,7 +828,7 @@ export default function App() {
             <Crd>
               <SL>메모</SL>
               <textarea value={golfNote} onChange={e=>setGolfNote(e.target.value)} placeholder="오늘 라운드 메모..." rows={3}
-                style={{width:"100%",background:isLight?"#F0F4EE":"#1A1A1C",border:`1px solid ${isLight?"#ccc":"#2a2a2a"}`,borderRadius:11,padding:"12px 14px",color:tc,fontSize:13,resize:"none",fontFamily:F}}/>
+                style={{width:"100%",background:isLight?"#F0F4EE":"#1A1A1C",border:`1px solid ${isLight?"#ccc":"#2a2a2a"}`,borderRadius:11,padding:"12px 14px",color:tc,fontSize:16,resize:"none",fontFamily:F}}/>
             </Crd>
 
             <button onClick={()=>{toast2("⛳ 스코어카드 저장됐어요!");setSubView(null);}} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>저장하기</button>
