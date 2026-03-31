@@ -287,6 +287,7 @@ export default function App() {
   const addEx  = ()     => setNewRec(p=>({...p,exercises:[...p.exercises,{name:"",sets:[{weight:"",reps:""}]}]}));
   const delEx  = (ei)   => setNewRec(p=>({...p,exercises:p.exercises.filter((_,i)=>i!==ei)}));
   const addSet = (ei)   => setNewRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:[...e[ei].sets,{weight:"",reps:""}]};return{...p,exercises:e};});
+  const delSet = (ei,si)=> setNewRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:e[ei].sets.filter((_,i)=>i!==si)};return{...p,exercises:e};});
   const upName = (ei,v) => setNewRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],name:v};return{...p,exercises:e};});
   const upSet  = (ei,si,f,v) => setNewRec(p=>{const e=[...p.exercises];const s=[...e[ei].sets];s[si]={...s[si],[f]:v};e[ei]={...e[ei],sets:s};return{...p,exercises:e};});
   const addFav = (name) => { setNewRec(p=>({...p,exercises:[...p.exercises.filter(e=>e.name),{name,sets:[{weight:"",reps:""}]}]})); toast2(`${name} 추가!`); };
@@ -568,6 +569,7 @@ export default function App() {
                       <input value={set.reps} onChange={e=>upSet(ei,si,"reps",e.target.value)} placeholder="횟수 / 메모"
                         style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 10px",color:"#fff",fontSize:16,fontFamily:F}}/>
                     )}
+                    <button onClick={()=>delSet(ei,si)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:11,cursor:"pointer",flexShrink:0,padding:"4px 6px",color:"#c0392b"}}>✕</button>
                   </div>
                 ))}
                 <button onClick={()=>addSet(ei)} style={{background:"none",border:`1px dashed #2a2a2a`,borderRadius:9,padding:"8px",color:"#555",fontSize:12,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:F}}>+ 세트 추가</button>
