@@ -137,7 +137,7 @@ export default function App() {
         setTimerDisp(p => {
           if (p <= 1) {
             setTimerOn(false);
-            if (notifs.rest) notifyRestComplete();
+            notifyRestComplete();
             toast2("⏱ 휴식 완료! 다음 세트!");
             return 0;
           }
@@ -229,6 +229,7 @@ export default function App() {
   };
   const currentStreak = getCurrentStreak();
   const pct    = (timerDisp / timerSec) * 100;
+  const fmt    = (sec) => `${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
   const go     = (tab, sub=null) => { setActiveTab(tab); setSubView(sub); setSelRec(null); };
 
   const handleStartWorkout = (r) => {
@@ -640,7 +641,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
-                    {[30,60,75,90,120,180].map(s=>(
+                    {[30,60,90,120,180].map(s=>(
                       <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
                     ))}
                   </div>
@@ -734,7 +735,7 @@ export default function App() {
               <SL>라운드 정보</SL>
               <div style={{width:"100%",marginBottom:10,minWidth:0}}>
                 <input type="text" value={course} onChange={e=>setCourse(e.target.value)} placeholder="골프장 이름 입력"
-                  style={{...dateInputStyle, width:"100%",maxWidth:"100%",minWidth:0, background:isLight?"#F5F5F0":"#1A1A1C", color:tc, border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`}}/>
+                  style={{...dateInputStyle, width:"100%",maxWidth:"100%",minWidth:0, fontSize:16, background:isLight?"#F5F5F0":"#1A1A1C", color:tc, border:`1px solid ${course?"rgba(34,197,94,0.35)":bdr}`}}/>
               </div>
               <div style={{width:"100%",overflow:"hidden"}}>
                 <input type="date" value={golfDate} onChange={e=>setGolfDate(e.target.value)}
