@@ -551,7 +551,7 @@ export default function App() {
               <Crd key={ei} style={{padding:"14px"}}>
                 <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
                   <input value={ex.name} onChange={e=>upName(ei,e.target.value)} placeholder="운동 이름"
-                    style={{flex:1,minWidth:0,background:"#1E1E20",border:"none",borderRadius:10,padding:"10px 12px",color:newRec.type==="health"?org:grn,fontSize:13,fontWeight:700,fontFamily:F}}/>
+                    style={{flex:1,minWidth:0,background:"#1E1E20",border:"none",borderRadius:10,padding:"10px 12px",color:newRec.type==="health"?org:grn,fontSize:16,fontWeight:700,fontFamily:F}}/>
                   <button onClick={()=>togFav(ex.name)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",flexShrink:0,padding:"4px"}}>
                     {favs.includes(ex.name)?"⭐":"☆"}
                   </button>
