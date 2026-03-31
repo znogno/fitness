@@ -639,7 +639,7 @@ export default function App() {
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <button onClick={()=>setTimerOn(p=>!p)} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"linear-gradient(135deg,#444,#333)":"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>{timerOn?"⏸ 일시정지":"▶ 시작"}</button>
-                <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
+                <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"none",background:"linear-gradient(135deg,#1A6B3C,#22C55E)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
               </div>
             </Crd>
             {workoutExercises.length===0 ? (
