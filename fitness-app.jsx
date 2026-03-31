@@ -94,7 +94,8 @@ export default function App() {
   const [timerSec, setTimerSec]   = useState(90);
   const [timerDisp, setTimerDisp] = useState(90);
   const [timerOn, setTimerOn]     = useState(false);
-  const timerRef = useRef(null);
+  const timerRef    = useRef(null);
+  const timerSecRef = useRef(90);
 
   const [workoutExercises, setWorkoutExercises] = useState([]);
   const [exCounters, setExCounters]             = useState({});
@@ -131,6 +132,8 @@ export default function App() {
 
   const [notifs, setNotifs] = useState({workout:false,rest:false,weekly:false,golf:false});
 
+  useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
+
   useEffect(() => {
     if (timerOn && timerDisp > 0) {
       timerRef.current = setInterval(() => {
@@ -139,6 +142,7 @@ export default function App() {
             setTimerOn(false);
             notifyRestComplete();
             toast2("⏱ 휴식 완료! 다음 세트!");
+            setTimeout(() => setTimerDisp(timerSecRef.current), 600);
             return 0;
           }
           return p - 1;
