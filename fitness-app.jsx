@@ -113,7 +113,7 @@ export default function App() {
         setTimerDisp(p => {
           if (p <= 1) {
             setTimerOn(false);
-            if (navigator.vibrate) navigator.vibrate([300,100,300,100,500]);
+            notifyRestComplete();
             toast2("⏱ 휴식 완료! 다음 세트!");
             return 0;
           }
@@ -130,6 +130,26 @@ export default function App() {
   }, [golfCourses]);
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+  const notifyRestComplete = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate([300,100,300,100,500]);
+      return;
+    }
+    if (typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+      osc.onended = () => ctx.close();
+    }
+  };
   const fmt    = (s)   => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const pct    = (timerDisp / timerSec) * 100;
   const go     = (tab, sub=null) => { setActiveTab(tab); setSubView(sub); setSelRec(null); };
@@ -225,6 +245,7 @@ export default function App() {
   const bdr = isLight?"#DDE8D8":"#222";
   const sub = isLight?"#888":"#555";
   const F   = font.value;
+  const rootFontSize = (font.id==="nanumbrush" || font.id==="nanumpen") ? 15 : 14;
   const org = "#FF6B35"; const grn = "#22C55E";
 
   const SL  = ({children}) => <div style={{fontSize:11,color:sub,fontWeight:700,letterSpacing:1.1,textTransform:"uppercase",marginBottom:12,fontFamily:F}}>{children}</div>;
@@ -267,7 +288,7 @@ export default function App() {
   const regions  = [...new Set(golfCourses.map(c=>c.region))];
 
   return (
-    <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box"}}>
+    <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box",fontSize:rootFontSize}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Nanum+Pen+Script&family=Patrick+Hand&family=Gothic+A1:wght@400;600;700;900&family=Nunito:wght@400;600;700;800;900&display=swap');
         @keyframes fd{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
