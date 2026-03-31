@@ -11,8 +11,6 @@ const FONTS = [
 
 const GOLF_COURSES = [
   { id:1,  name:"수원CC",        region:"경기", pars:[4,3,5,4,4,3,5,4,4,4,4,3,5,4,3,5,4,4] },
-  { id:2,  name:"용인CC",        region:"경기", pars:[4,4,3,5,4,3,4,5,4,4,3,5,4,4,3,5,4,4] },
-  { id:3,  name:"안성CC",        region:"경기", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
   { id:4,  name:"남서울CC",      region:"경기", pars:[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] },
   { id:5,  name:"한양CC",        region:"경기", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
   { id:6,  name:"88CC",          region:"경기", pars:[4,4,3,5,4,3,4,5,4,4,4,3,5,4,4,3,5,4] },
@@ -23,14 +21,6 @@ const GOLF_COURSES = [
   { id:11, name:"제주CC",        region:"제주", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
   { id:12, name:"핀크스GC",      region:"제주", pars:[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] },
   { id:13, name:"나인브릿지",    region:"제주", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
-  { id:14, name:"경주CC",        region:"경북", pars:[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] },
-  { id:15, name:"대구CC",        region:"경북", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
-  { id:16, name:"부산CC",        region:"경남", pars:[4,4,3,5,4,3,4,5,4,4,4,3,5,4,4,3,5,4] },
-  { id:17, name:"웨스트케이프",  region:"경남", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
-  { id:18, name:"광주CC",        region:"전남", pars:[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] },
-  { id:19, name:"전주CC",        region:"전북", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
-  { id:20, name:"강원랜드CC",    region:"강원", pars:[4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4,4] },
-  { id:21, name:"알펜시아GC",    region:"강원", pars:[4,4,3,5,4,3,4,5,4,4,4,3,5,4,4,3,5,4] },
   { id:0,  name:"직접 입력",     region:"기타", pars:[4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] },
 ];
 
@@ -96,11 +86,21 @@ export default function App() {
 
   const [course, setCourse]               = useState(null);
   const [showCourseModal, setShowCourseModal] = useState(false);
+  const [golfCourses, setGolfCourses]     = useState(() => {
+    if (typeof window === "undefined") return GOLF_COURSES;
+    const raw = window.localStorage.getItem("fitness-golf-courses");
+    return raw ? JSON.parse(raw) : GOLF_COURSES;
+  });
   const [golfPars, setGolfPars]           = useState(Array(18).fill(4));
   const [scores, setScores]               = useState(mkScores());
   const [golfPhoto, setGolfPhoto]         = useState(null);
   const [golfNote, setGolfNote]           = useState("");
   const [golfDate, setGolfDate]           = useState(todayStr());
+  const [golfRounds, setGolfRounds]       = useState([
+    { id:1, date:"2026-03-22", course:"수원CC", score:92, diff:"+20" },
+    { id:2, date:"2026-03-15", course:"용인CC", score:90, diff:"+18" },
+    { id:3, date:"2026-03-08", course:"안성CC", score:94, diff:"+22" },
+  ]);
   const [lightMode, setLightMode]         = useState(false);
   const photoRef   = useRef(null);
   const galleryRef = useRef(null);
@@ -123,6 +123,11 @@ export default function App() {
     }
     return () => clearInterval(timerRef.current);
   }, [timerOn]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("fitness-golf-courses", JSON.stringify(golfCourses));
+  }, [golfCourses]);
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const fmt    = (s)   => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
@@ -182,6 +187,26 @@ export default function App() {
     toast2("🗑️ 기록이 삭제되었습니다.");
   };
 
+  const deleteGolfRound = (id) => {
+    if (!window.confirm("이 라운드를 삭제하시겠어요?")) return;
+    setGolfRounds(p => p.filter(r => r.id !== id));
+    toast2("🗑️ 라운드가 삭제되었습니다.");
+  };
+
+  const deleteGolfCourse = (id) => {
+    if (!window.confirm("이 골프장을 삭제하시겠어요?")) return;
+    setGolfCourses(p => p.filter(c => c.id !== id));
+    if (course?.id === id) {
+      setCourse(null);
+      setGolfPars(Array(18).fill(4));
+    }
+    toast2("🗑️ 골프장이 삭제되었습니다.");
+  };
+
+  const golfRoundCount = golfRounds.length;
+  const golfBestScore = golfRoundCount > 0 ? Math.min(...golfRounds.map(r => Number(r.score))) : null;
+  const golfAvgScore = golfRoundCount > 0 ? Math.round(golfRounds.reduce((sum, r) => sum + Number(r.score), 0) / golfRoundCount) : null;
+
   const totalScore = scores.reduce((s,h)=>s+(parseInt(h.score)||0),0);
   const totalPar   = golfPars.reduce((a,b)=>a+b,0);
   const totalPutts = scores.reduce((s,h)=>s+(parseInt(h.putts)||0),0);
@@ -239,7 +264,7 @@ export default function App() {
   };
 
   const filtered = records.filter(r => recFilter==="all" || r.type===recFilter);
-  const regions  = [...new Set(GOLF_COURSES.map(c=>c.region))];
+  const regions  = [...new Set(golfCourses.map(c=>c.region))];
 
   return (
     <div style={{fontFamily:F,background:bg,minHeight:"100vh",color:tc,maxWidth:390,margin:"0 auto",position:"relative",overflow:"hidden",width:"100%",boxSizing:"border-box"}}>
@@ -274,11 +299,14 @@ export default function App() {
               {regions.map(region=>(
                 <div key={region}>
                   <div style={{fontSize:11,color:"#555",fontWeight:700,letterSpacing:1,marginTop:14,marginBottom:8,fontFamily:F}}>{region}</div>
-                  {GOLF_COURSES.filter(c=>c.region===region).map(c=>(
-                    <button key={c.id} onClick={()=>pickCourse(c)} style={{width:"100%",padding:"12px 16px",background:course?.id===c.id?"rgba(34,197,94,0.12)":"#222",border:`1px solid ${course?.id===c.id?"rgba(34,197,94,0.35)":"transparent"}`,borderRadius:12,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-                      <span style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:F}}>{c.name}</span>
+                  {golfCourses.filter(c=>c.region===region).map(c=>(
+                    <div key={c.id} onClick={()=>pickCourse(c)} style={{width:"100%",padding:"12px 16px",background:course?.id===c.id?"rgba(34,197,94,0.12)":"#222",border:`1px solid ${course?.id===c.id?"rgba(34,197,94,0.35)":"transparent"}`,borderRadius:12,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <span style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:F}}>{c.name}</span>
+                        <button type="button" onClick={(e)=>{e.stopPropagation(); deleteGolfCourse(c.id);}} style={{padding:"6px 10px",background:"rgba(255,107,53,0.12)",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                      </div>
                       <span style={{fontSize:12,color:"#555",fontFamily:F}}>파 {c.pars.reduce((a,b)=>a+b,0)}</span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               ))}
@@ -572,7 +600,11 @@ export default function App() {
         {activeTab==="golf"&&subView===null&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22}}>
-              {[{l:"총 라운드",v:"18회",c:grn},{l:"베스트",v:"88타",c:"#60A5FA"},{l:"평균",v:"93타",c:"#FBBF24"}].map(s=>(
+              {[
+                {l:"총 라운드", v:`${golfRoundCount}회`, c:grn},
+                {l:"베스트", v:golfBestScore!==null?`${golfBestScore}타`:"-", c:"#60A5FA"},
+                {l:"평균", v:golfAvgScore!==null?`${golfAvgScore}타`:"-", c:"#FBBF24"}
+              ].map(s=>(
                 <div key={s.l} style={{background:crd,borderRadius:16,padding:"16px 12px",border:`1px solid ${bdr}`}}>
                   <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:F}}>{s.v}</div>
                   <div style={{fontSize:11,color:sub,marginTop:4,fontWeight:600,fontFamily:F}}>{s.l}</div>
@@ -581,15 +613,20 @@ export default function App() {
             </div>
             <button onClick={()=>setSubView("card")} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",marginBottom:16,fontFamily:F,boxShadow:"0 8px 24px rgba(34,197,94,0.2)"}}>⛳ 새 라운드 스코어 입력</button>
             <SL>최근 라운드</SL>
-            {[{date:"2026-03-22",course:"수원CC",score:92,diff:"+20"},{date:"2026-03-15",course:"용인CC",score:90,diff:"+18"},{date:"2026-03-08",course:"안성CC",score:94,diff:"+22"}].map((r,i)=>(
-              <div key={i} style={{background:crd,borderRadius:15,padding:"15px 18px",border:`1px solid ${bdr}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            {golfRounds.length===0 ? (
+              <div style={{background:crd,borderRadius:15,padding:20,color:sub,textAlign:"center"}}>저장된 라운드가 없습니다.</div>
+            ) : golfRounds.map((r)=>(
+              <div key={r.id} style={{background:crd,borderRadius:15,padding:"15px 18px",border:`1px solid ${bdr}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:14,fontWeight:700,fontFamily:F,color:tc}}>{r.course}</div>
                   <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>{fmtDate(r.date)}</div>
                 </div>
-                <div style={{textAlign:"right"}}>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
                   <div style={{fontSize:22,fontWeight:800,color:"#FBBF24",fontFamily:F}}>{r.score}</div>
-                  <div style={{fontSize:11,color:sub,fontFamily:F}}>파 72 · {r.diff}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{fontSize:11,color:sub,fontFamily:F}}>파 72 · {r.diff}</div>
+                    <button onClick={()=>deleteGolfRound(r.id)} style={{background:"none",border:"1px solid #FF6B35",borderRadius:10,padding:"5px 10px",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                  </div>
                 </div>
               </div>
             ))}
