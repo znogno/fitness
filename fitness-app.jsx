@@ -102,6 +102,7 @@ export default function App() {
   const [timerDisp, setTimerDisp] = useState(90);
   const [timerOn, setTimerOn]     = useState(false);
   const timerRef    = useRef(null);
+  const pressTimer  = useRef(null);
   const timerSecRef = useRef(90);
 
   const [workoutExercises, setWorkoutExercises] = useState([]);
@@ -314,6 +315,14 @@ export default function App() {
   const addEditSet  = (ei)       => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:[...e[ei].sets,{weight:"",reps:""}]};return{...p,exercises:e};});
   const addEditEx   = ()         => setEditRec(p=>({...p,exercises:[...p.exercises,{name:"",sets:[{weight:"",reps:""}]}]}));
 
+  const copyRec = (r) => {
+    const copied = {...JSON.parse(JSON.stringify(r)), id:Date.now(), date:todayStr()};
+    setRecords(p=>[copied,...p]);
+    setCopiedId(copied.id);
+    setTimeout(()=>setCopiedId(null), 1500);
+    toast2("📋 복사되었습니다.");
+  };
+
   const deleteRec = (id) => {
     if (!window.confirm("이 기록을 삭제하시겠어요?")) return;
     setRecords(p => p.filter(r => r.id !== id));
@@ -496,7 +505,16 @@ export default function App() {
               ))}
             </div>
             {filtered.map(r=>(
-              <Crd key={r.id}>
+              <div key={r.id}
+                onTouchStart={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
+                onTouchEnd={()=>clearTimeout(pressTimer.current)}
+                onTouchMove={()=>clearTimeout(pressTimer.current)}
+                onMouseDown={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
+                onMouseUp={()=>clearTimeout(pressTimer.current)}
+                onMouseLeave={()=>clearTimeout(pressTimer.current)}
+                style={{transition:"opacity 0.3s",opacity:copiedId===r.id?0.5:1}}
+              >
+              <Crd>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
                     <div style={{width:44,height:44,borderRadius:13,background:r.type==="health"?"rgba(255,107,53,0.15)":"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{getIcon(r.type,r.subType)}</div>
@@ -517,6 +535,7 @@ export default function App() {
                   이 운동 오늘 그대로 시작하기 →
                 </button>
               </Crd>
+              </div>
             ))}
           </div>
         )}
