@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/znogn/fitness/app/**)",
+      "Bash(ls \"C:\\\\Users\\\\znogn\\\\fitness\\\\app\\\\\\(tabs\\)\")"
+    ]
+  }
+}
