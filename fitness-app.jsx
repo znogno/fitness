@@ -615,66 +615,74 @@ export default function App() {
         {/* WORKOUT */}
         {activeTab==="workout"&&!workoutDone&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
-            <Crd>
-              <SL>휴식 타이머</SL>
-              <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
-                <div style={{position:"relative",width:120,height:120}}>
-                  <svg width="120" height="120" style={{transform:"rotate(-90deg)"}}>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
-                      strokeDasharray={2*Math.PI*52}
-                      strokeDashoffset={(2*Math.PI*52)*(1-pct/100)}
-                      strokeLinecap="round" style={{transition:"stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
-                  </svg>
-                  <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
-                {[30,60,75,90,120,180].map(s=>(
-                  <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
-                ))}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <button onClick={()=>{if(!timerOn){setTimerDisp(timerSec);setTimerOn(true);}}} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"#1A1A1C":"linear-gradient(135deg,"+org+",#FF3A6E)",color:timerOn?"#444":"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>▶ 시작</button>
-                <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
-              </div>
-            </Crd>
-            <Crd>
-              <SL>종목별 세트 카운터</SL>
-              {workoutExercises.map((ex,i)=>{
-                const cnt  = exCounters[ex.id]||0;
-                const target = ex.target || ex.sets.length;
-                const done = cnt>=target;
-                return(
-                  <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
-                    <div style={{width:"65%"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                        <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
-                          style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F}}/>
-                        <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"6px 10px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
-                        <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
-                        <input type="number" min={1} value={target} onChange={e=>updateWorkoutExercise(ex.id,"target",Math.max(1,parseInt(e.target.value)||1))}
-                          style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F,textAlign:"center"}}/>
-                        <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>−</button>
-                      <span style={{fontSize:22,fontWeight:900,color:done?grn:org,fontFamily:F,minWidth:28,textAlign:"center"}}>{cnt}</span>
-                      <button onClick={()=>setExCounters(p=>({...p,[ex.id]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+            {workoutExercises.length===0 ? (
+              <Crd style={{textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:F,marginBottom:10}}>운동 루틴이 없습니다.</div>
+                <div style={{fontSize:13,color:sub,lineHeight:1.6,marginBottom:20,fontFamily:F}}>운동 탭을 눌렀을 때 기본 루틴이 없으면 화면이 검게 보일 수 있어요. 먼저 기록 탭에서 루틴을 선택하거나 새 운동 기록을 추가해주세요.</div>
+                <button onClick={()=>go("record")} style={{padding:14,width:"100%",background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F}}>기록 탭으로 이동</button>
+              </Crd>
+            ) : (
+              <div>
+                <Crd>
+                  <SL>휴식 타이머</SL>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+                    <div style={{position:"relative",width:120,height:120}}>
+                      <svg width="120" height="120" style={{transform:"rotate(-90deg)"}}>
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
+                        <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
+                          strokeDasharray={2*Math.PI*52}
+                          strokeDashoffset={(2*Math.PI*52)*(1-pct/100)}
+                          strokeLinecap="round" style={{transition:"stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
+                      </svg>
+                      <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
                     </div>
                   </div>
-                );
-              })}
-              <button onClick={addWorkoutExercise} style={{width:"100%",padding:14,background:"#141414",border:`1px dashed ${bdr}`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:14,fontFamily:F}}>+ 운동 추가</button>
-            </Crd>
-            <button onClick={finishWorkout} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>
-              🏁 운동 완료 & 저장
-            </button>
-          </div>
-        )}
+                  <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
+                    {[30,60,75,90,120,180].map(s=>(
+                      <button key={s} onClick={()=>{setTimerSec(s);setTimerDisp(s);setTimerOn(false);clearInterval(timerRef.current);}} style={{background:timerSec===s?org:"#1E1E20",border:"none",borderRadius:10,padding:"7px 13px",color:timerSec===s?"#fff":"#666",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",fontFamily:F}}>{s}초</button>
+                    ))}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <button onClick={()=>{if(!timerOn){setTimerDisp(timerSec);setTimerOn(true);}}} style={{padding:13,borderRadius:13,border:"none",background:timerOn?"#1A1A1C":"linear-gradient(135deg,"+org+",#FF3A6E)",color:timerOn?"#444":"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>▶ 시작</button>
+                    <button onClick={()=>{setTimerOn(false);clearInterval(timerRef.current);setTimerDisp(timerSec);}} style={{padding:13,borderRadius:13,border:"1px solid "+bdr,background:"transparent",color:"#666",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>■ 초기화</button>
+                  </div>
+                </Crd>
+                <Crd>
+                  <SL>종목별 세트 카운터</SL>
+                  {workoutExercises.map((ex,i)=>{
+                    const cnt  = exCounters[ex.id]||0;
+                    const target = ex.target || ex.sets.length;
+                    const done = cnt>=target;
+                    return(
+                      <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
+                        <div style={{width:"65%"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                            <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
+                              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F}}/>
+                            <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"6px 10px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                            <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
+                            <input type="number" min={1} value={target} onChange={e=>updateWorkoutExercise(ex.id,"target",Math.max(1,parseInt(e.target.value)||1))}
+                              style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:tc,fontSize:13,fontFamily:F,textAlign:"center"}}/>
+                            <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>-</button>
+                          <span style={{fontSize:22,fontWeight:900,color:done?grn:org,fontFamily:F,minWidth:28,textAlign:"center"}}>{cnt}</span>
+                          <button onClick={()=>setExCounters(p=>({...p,[ex.id]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <button onClick={addWorkoutExercise} style={{width:"100%",padding:14,background:"#141414",border:`1px dashed ${bdr}`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:14,fontFamily:F}}>+ 운동 추가</button>
+                </Crd>
+                <button onClick={finishWorkout} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>
+                  🏁 운동 완료 & 저장
+                </button>
+              </div>
+            )}
 
         {/* GOLF HOME */}
         {activeTab==="golf"&&subView===null&&(
