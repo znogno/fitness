@@ -93,6 +93,7 @@ export default function App() {
     }
   });
   const [selRec, setSelRec]       = useState(null);
+  const [editRec, setEditRec]     = useState(null);
   const [copiedId, setCopiedId]   = useState(null);
   const [toast, setToast]         = useState(null);
   const [recFilter, setRecFilter] = useState("all");
@@ -298,6 +299,20 @@ export default function App() {
     setNewRec({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
     go("record"); toast2("💾 기록 저장됐어요!");
   };
+
+  const startEditRec = () => setEditRec(JSON.parse(JSON.stringify(selRec)));
+  const saveEditRec  = () => {
+    setRecords(p => p.map(r => r.id===editRec.id ? editRec : r));
+    setSelRec(editRec);
+    setEditRec(null);
+    toast2("✅ 수정되었습니다.");
+  };
+  const upEditName  = (ei,v)     => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],name:v};return{...p,exercises:e};});
+  const upEditSet   = (ei,si,f,v)=> setEditRec(p=>{const e=[...p.exercises];const s=[...e[ei].sets];s[si]={...s[si],[f]:v};e[ei]={...e[ei],sets:s};return{...p,exercises:e};});
+  const delEditEx   = (ei)       => setEditRec(p=>({...p,exercises:p.exercises.filter((_,i)=>i!==ei)}));
+  const delEditSet  = (ei,si)    => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:e[ei].sets.filter((_,i)=>i!==si)};return{...p,exercises:e};});
+  const addEditSet  = (ei)       => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:[...e[ei].sets,{weight:"",reps:""}]};return{...p,exercises:e};});
+  const addEditEx   = ()         => setEditRec(p=>({...p,exercises:[...p.exercises,{name:"",sets:[{weight:"",reps:""}]}]}));
 
   const deleteRec = (id) => {
     if (!window.confirm("이 기록을 삭제하시겠어요?")) return;
@@ -583,37 +598,94 @@ export default function App() {
         {/* RECORD DETAIL */}
         {activeTab==="record"&&subView==="detail"&&selRec&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
-            <button onClick={()=>setSubView(null)} style={{background:"none",border:"none",color:org,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 목록으로</button>
-            <Crd>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                <div>
-                  <div style={{fontSize:20,fontWeight:800,fontFamily:F}}>{selRec.title}</div>
-                  <div style={{fontSize:12,color:sub,marginTop:4,fontFamily:F}}>{fmtDate(selRec.date)} · {selRec.duration}</div>
-                </div>
-                <div style={{fontSize:36}}>{getIcon(selRec.type,selRec.subType)}</div>
-              </div>
-              {selRec.exercises.map((ex,i)=>(
-                <div key={i} style={{marginBottom:14,paddingBottom:14,borderBottom:i<selRec.exercises.length-1?`1px solid ${bdr}`:"none"}}>
-                  <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:selRec.type==="health"?org:grn,fontFamily:F}}>{ex.name}</div>
-                  {ex.sets.map((set,si)=>(
-                    <div key={si} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,background:"#1A1A1C",borderRadius:9,padding:"8px 12px"}}>
-                      <span style={{fontSize:11,color:"#444",fontWeight:700,width:20,fontFamily:F}}>S{si+1}</span>
-                      {set.weight!==null?(
-                        <span style={{fontSize:13,fontWeight:600,fontFamily:F}}>{set.weight}kg × {set.reps}회</span>
-                      ):(
-                        <span style={{fontSize:12,color:"#777",fontFamily:F}}>{set.reps}회 {set.note&&`· ${set.note}`}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </Crd>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
-              <button onClick={()=>deleteRec(selRec.id)} style={{padding:15,background:"#1A1A1C",border:"1px solid "+bdr,borderRadius:16,color:"#FF6B35",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>🗑️ 삭제</button>
-              <button onClick={()=>handleStartWorkout(selRec)} style={{padding:15,background:selRec.type==="health"?"linear-gradient(135deg,"+org+",#FF3A6E)":"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>
-                오늘 이 루틴 그대로 시작하기 🚀
-              </button>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <button onClick={()=>{setEditRec(null);setSubView(null);}} style={{background:"none",border:"none",color:org,fontSize:13,fontWeight:700,cursor:"pointer",padding:0,fontFamily:F}}>← 목록으로</button>
+              {!editRec
+                ? <button onClick={startEditRec} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:10,padding:"6px 14px",color:tc,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F}}>✏️ 수정</button>
+                : <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>setEditRec(null)} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:10,padding:"6px 14px",color:"#888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F}}>취소</button>
+                    <button onClick={saveEditRec} style={{background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:10,padding:"6px 14px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F}}>저장</button>
+                  </div>
+              }
             </div>
+
+            {/* 보기 모드 */}
+            {!editRec&&(
+              <Crd>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div>
+                    <div style={{fontSize:20,fontWeight:800,fontFamily:F}}>{selRec.title}</div>
+                    <div style={{fontSize:12,color:sub,marginTop:4,fontFamily:F}}>{fmtDate(selRec.date)} · {selRec.duration}</div>
+                  </div>
+                  <div style={{fontSize:36}}>{getIcon(selRec.type,selRec.subType)}</div>
+                </div>
+                {selRec.exercises.map((ex,i)=>(
+                  <div key={i} style={{marginBottom:14,paddingBottom:14,borderBottom:i<selRec.exercises.length-1?`1px solid ${bdr}`:"none"}}>
+                    <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:selRec.type==="health"?org:grn,fontFamily:F}}>{ex.name}</div>
+                    {ex.sets.map((set,si)=>(
+                      <div key={si} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,background:"#1A1A1C",borderRadius:9,padding:"8px 12px"}}>
+                        <span style={{fontSize:11,color:"#444",fontWeight:700,width:20,fontFamily:F}}>S{si+1}</span>
+                        {set.weight!==null&&set.weight!==""
+                          ? <span style={{fontSize:13,fontWeight:600,fontFamily:F}}>{set.weight}kg × {set.reps}회</span>
+                          : <span style={{fontSize:12,color:"#777",fontFamily:F}}>{set.reps}회 {set.note&&`· ${set.note}`}</span>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </Crd>
+            )}
+
+            {/* 수정 모드 */}
+            {editRec&&(
+              <>
+                <Crd>
+                  <SL>루틴 이름</SL>
+                  <input value={editRec.title} onChange={e=>setEditRec(p=>({...p,title:e.target.value}))}
+                    style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:4,fontFamily:F}}/>
+                </Crd>
+                <SL>운동 목록</SL>
+                {editRec.exercises.map((ex,ei)=>(
+                  <Crd key={ei} style={{padding:"14px"}}>
+                    <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+                      <input value={ex.name} onChange={e=>upEditName(ei,e.target.value)} placeholder="운동 이름"
+                        style={{flex:1,minWidth:0,background:"#1E1E20",border:"none",borderRadius:10,padding:"10px 12px",color:editRec.type==="health"?org:grn,fontSize:16,fontWeight:700,fontFamily:F}}/>
+                      <button onClick={()=>delEditEx(ei)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:13,cursor:"pointer",flexShrink:0,padding:"4px 8px",color:"#c0392b"}}>✕</button>
+                    </div>
+                    {ex.sets.map((set,si)=>(
+                      <div key={si} style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                        <span style={{fontSize:11,color:"#444",fontWeight:700,fontFamily:F,flexShrink:0,width:24}}>S{si+1}</span>
+                        {editRec.type==="health"?(
+                          <>
+                            <input value={set.weight} onChange={e=>upEditSet(ei,si,"weight",e.target.value)} placeholder="kg" type="number"
+                              style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                            <span style={{color:"#333",fontSize:11,flexShrink:0}}>×</span>
+                            <input value={set.reps} onChange={e=>upEditSet(ei,si,"reps",e.target.value)} placeholder="횟수" type="number"
+                              style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                            <span style={{color:"#444",fontSize:11,flexShrink:0,fontFamily:F}}>회</span>
+                          </>
+                        ):(
+                          <input value={set.reps} onChange={e=>upEditSet(ei,si,"reps",e.target.value)} placeholder="횟수 / 메모"
+                            style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 10px",color:"#fff",fontSize:16,fontFamily:F}}/>
+                        )}
+                        <button onClick={()=>delEditSet(ei,si)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:11,cursor:"pointer",flexShrink:0,padding:"4px 6px",color:"#c0392b"}}>✕</button>
+                      </div>
+                    ))}
+                    <button onClick={()=>addEditSet(ei)} style={{background:"none",border:`1px dashed #2a2a2a`,borderRadius:9,padding:"8px",color:"#555",fontSize:12,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:F}}>+ 세트 추가</button>
+                  </Crd>
+                ))}
+                <button onClick={addEditEx} style={{width:"100%",padding:13,background:"#141414",border:`1px dashed #2a2a2a`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:20,fontFamily:F}}>+ 운동 추가</button>
+              </>
+            )}
+
+            {!editRec&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
+                <button onClick={()=>deleteRec(selRec.id)} style={{padding:15,background:"#1A1A1C",border:"1px solid "+bdr,borderRadius:16,color:"#FF6B35",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>🗑️ 삭제</button>
+                <button onClick={()=>handleStartWorkout(selRec)} style={{padding:15,background:selRec.type==="health"?"linear-gradient(135deg,"+org+",#FF3A6E)":"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>
+                  오늘 이 루틴 그대로 시작하기 🚀
+                </button>
+              </div>
+            )}
           </div>
         )}
 
