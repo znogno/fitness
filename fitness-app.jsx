@@ -225,6 +225,9 @@ export default function App() {
   const monthlyCount = thisMonthRecords.length;
   const totalMinutes = thisMonthRecords.reduce((sum, r) => sum + parseDurationToMinutes(r.duration), 0);
   const totalTimeLabel = formatMinutes(totalMinutes);
+  const monthActiveDays = new Set(thisMonthRecords.map(r => r.date).filter(Boolean)).size;
+  const monthExerciseCount = new Set(thisMonthRecords.flatMap(r => (r.exercises || []).map(ex => ex.name).filter(Boolean))).size;
+  const monthSetCount = thisMonthRecords.reduce((sum, r) => sum + (Array.isArray(r.exercises) ? r.exercises.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.length : 0), 0) : 0), 0);
   const recordDateSet = new Set(records.map(r => r.date).filter(Boolean));
   const getCurrentStreak = () => {
     if (recordDateSet.size === 0) return 0;
@@ -480,7 +483,7 @@ export default function App() {
               </button>
             </div>
             <SL>최근 운동</SL>
-            {records.slice(0,2).map(r=>(
+            {[...records].sort((a,b)=>new Date(b.date) - new Date(a.date)).slice(0,2).map(r=>(
               <div key={r.id} onClick={()=>{setSelRec(r);setActiveTab("record");setSubView("detail");}} style={{background:crd,borderRadius:16,padding:15,border:`1px solid ${bdr}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:42,height:42,borderRadius:12,background:r.type==="health"?"rgba(255,107,53,0.15)":"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{getIcon(r.type,r.subType)}</div>
@@ -544,6 +547,15 @@ export default function App() {
         {activeTab==="record"&&subView==="add"&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             <button onClick={()=>setSubView(null)} style={{background:"none",border:"none",color:org,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:24}}>
+              {[{l:"운동일수",v:`${monthActiveDays}일`,c:org},{l:"종목",v:`${monthExerciseCount}개`,c:grn},{l:"세트수",v:`${monthSetCount}세트`,c:"#60A5FA"}].map(s=>(
+                <div key={s.l} style={{background:crd,borderRadius:16,padding:"16px 12px",border:`1px solid ${bdr}`}}>
+                  <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:F}}>{s.v}</div>
+                  <div style={{fontSize:11,color:sub,marginTop:4,fontWeight:600,fontFamily:F}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
 
             <SL>운동 종류</SL>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
