@@ -558,15 +558,15 @@ export default function App() {
                     {newRec.type==="health"?(
                       <>
                         <input value={set.weight} onChange={e=>upSet(ei,si,"weight",e.target.value)} placeholder="kg" type="number"
-                          style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:13,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                          style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
                         <span style={{color:"#333",fontSize:11,flexShrink:0}}>×</span>
                         <input value={set.reps} onChange={e=>upSet(ei,si,"reps",e.target.value)} placeholder="횟수" type="number"
-                          style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:13,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                          style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
                         <span style={{color:"#444",fontSize:11,flexShrink:0,fontFamily:F}}>회</span>
                       </>
                     ):(
                       <input value={set.reps} onChange={e=>upSet(ei,si,"reps",e.target.value)} placeholder="횟수 / 메모"
-                        style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 10px",color:"#fff",fontSize:13,fontFamily:F}}/>
+                        style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 10px",color:"#fff",fontSize:16,fontFamily:F}}/>
                     )}
                   </div>
                 ))}
@@ -622,12 +622,11 @@ export default function App() {
               <SL>휴식 타이머</SL>
               <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
                 <div style={{position:"relative",width:120,height:120}}>
-                  <svg width="120" height="120" style={{transform:"rotate(-90deg) scale(-1,1)",transformOrigin:"center"}}>
+                  <svg width="120" height="120" style={{transform:"rotate(-90deg)"}}>
                     <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
                     <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
-                      strokeDasharray={2*Math.PI*52}
-                      strokeDashoffset={(2*Math.PI*52)*(1-pct/100)}
-                      strokeLinecap="round" style={{transition:"stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
+                      strokeDasharray={`${(2*Math.PI*52)*(pct/100)} ${2*Math.PI*52}`}
+                      strokeLinecap="round" style={{transition:"stroke-dasharray 0.8s ease,stroke 0.3s"}}/>
                   </svg>
                   <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
                 </div>
@@ -783,14 +782,14 @@ export default function App() {
                       <div style={{fontSize:9,color:sub,fontFamily:F}}>타수</div>
                       {scores.slice(from,to).map((h,k)=>(
                         <input key={k} value={h.score} onChange={e=>upScore(from+k,"score",e.target.value)} type="number"
-                          style={{width:"100%",background:isLight?"#E8EEE4":"#1E1E20",border:`1px solid ${isLight?"#ccc":"#2a2a2a"}`,borderRadius:7,padding:"7px 2px",color:scoreColor(h.score,golfPars[from+k]),fontSize:12,fontWeight:800,textAlign:"center",fontFamily:F}}/>
+                          style={{width:"100%",background:isLight?"#E8EEE4":"#1E1E20",border:`1px solid ${isLight?"#ccc":"#2a2a2a"}`,borderRadius:7,padding:"7px 2px",color:scoreColor(h.score,golfPars[from+k]),fontSize:16,fontWeight:800,textAlign:"center",fontFamily:F}}/>
                       ))}
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"32px repeat(9,1fr)",gap:3,alignItems:"center"}}>
                       <div style={{fontSize:9,color:sub,fontFamily:F}}>퍼트</div>
                       {scores.slice(from,to).map((h,k)=>(
                         <input key={k} value={h.putts} onChange={e=>upScore(from+k,"putts",e.target.value)} type="number"
-                          style={{width:"100%",background:isLight?"#DDE8D8":"#1A1A1C",border:`1px solid ${isLight?"#bbb":"#252525"}`,borderRadius:7,padding:"5px 2px",color:"#60A5FA",fontSize:11,fontWeight:700,textAlign:"center",fontFamily:F}}/>
+                          style={{width:"100%",background:isLight?"#DDE8D8":"#1A1A1C",border:`1px solid ${isLight?"#bbb":"#252525"}`,borderRadius:7,padding:"5px 2px",color:"#60A5FA",fontSize:16,fontWeight:700,textAlign:"center",fontFamily:F}}/>
                       ))}
                     </div>
                     <div style={{fontSize:11,color:sub,textAlign:"right",marginTop:8,fontFamily:F}}>
@@ -879,7 +878,7 @@ export default function App() {
                 </div>
               ))}
             </Crd>
-            <div style={{textAlign:"center",color:"#2a2a2a",fontSize:11,marginTop:8,fontFamily:F}}>Jinho Fit v4.1 · Made with ❤️</div>
+            <div style={{textAlign:"center",color:"#2a2a2a",fontSize:11,marginTop:8,fontFamily:F}}>Jinho Fit v4.1 · Made by Jinho ❤️</div>
           </div>
         )}
       </div>
