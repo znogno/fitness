@@ -132,6 +132,7 @@ export default function App() {
     return DEFAULT_FAV;
   });
   const [selectedCalDate, setSelectedCalDate] = useState(null);
+  const [homeStatModal, setHomeStatModal]     = useState(null);
 
   const [course, setCourse]               = useState("");
   const [golfPars, setGolfPars]           = useState(Array(18).fill(4));
@@ -328,12 +329,17 @@ export default function App() {
     clearInterval(workoutClockRef.current);
     setWorkoutStarted(false);
     const d = new Date();
+    const totalSecs = workoutElapsedSecs;
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    const durStr = h > 0 ? (m > 0 ? `${h}h ${m}분` : `${h}h`) : m > 0 ? `${m}분` : `${s}초`;
     const rec = {
       id: Date.now(),
       date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,
       type:"health", subType:workoutSubType,
       title: workoutSubType==="upper"?"상체 루틴":"하체 루틴",
-      duration:`${elapsed()}분`,
+      duration: durStr,
       exercises: workoutExercises.map(ex=>({
         name:ex.name,
         sets:Array.from({length:exCounters[ex.id]||0},(_,i)=>ex.sets[i]||{weight:null,reps:0}),
@@ -512,14 +518,58 @@ export default function App() {
       {/* Content */}
       <div style={{padding:"18px 0 100px",overflowY:"auto",overflowX:"hidden",maxHeight:"calc(100vh - 118px)"}}>
 
+        {/* HOME 통계 리셋 모달 */}
+        {homeStatModal&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setHomeStatModal(null)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#141414",borderRadius:"24px 24px 0 0",padding:"24px 24px 40px",width:"100%",maxWidth:390,border:"1px solid #222"}}>
+              <div style={{width:40,height:4,borderRadius:2,background:"#333",margin:"0 auto 20px"}}/>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:F,marginBottom:6}}>
+                {homeStatModal==="month"?"이번달 기록":homeStatModal==="time"?"총 시간 기록":"연속 운동 기록"}
+              </div>
+              <div style={{fontSize:13,color:sub,fontFamily:F,marginBottom:24}}>
+                {homeStatModal==="month"&&`이번달 운동 ${monthlyCount}회`}
+                {homeStatModal==="time"&&`이번달 총 ${totalTimeLabel}`}
+                {homeStatModal==="streak"&&`현재 ${currentStreak}일 연속`}
+              </div>
+              <button onClick={()=>{
+                const now=new Date();
+                if(window.confirm("이번달 운동 기록을 모두 삭제하시겠어요?")) {
+                  setRecords(p=>p.filter(r=>{
+                    if(!r.date) return true;
+                    const d=new Date(r.date);
+                    return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
+                  }));
+                  toast2("이번달 기록이 초기화됐어요.");
+                  setHomeStatModal(null);
+                }
+              }} style={{width:"100%",padding:15,background:"rgba(255,107,53,0.12)",border:"1px solid rgba(255,107,53,0.3)",borderRadius:14,color:org,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                🗑️ 이번달 기록 초기화
+              </button>
+              <button onClick={()=>{
+                if(window.confirm("전체 운동 기록을 삭제하시겠어요? 되돌릴 수 없습니다.")) {
+                  setRecords([]);
+                  toast2("전체 기록이 초기화됐어요.");
+                  setHomeStatModal(null);
+                }
+              }} style={{width:"100%",padding:15,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:14,color:"#ef4444",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                ⚠️ 전체 기록 삭제
+              </button>
+              <button onClick={()=>setHomeStatModal(null)} style={{width:"100%",padding:15,background:"#1E1E20",border:"none",borderRadius:14,color:"#888",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>
+                취소
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* HOME */}
         {activeTab==="home"&&subView===null&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22}}>
-              {[{l:"이번달",v:`${monthlyCount}회`,c:org},{l:"총 시간",v:totalTimeLabel,c:grn},{l:"연속",v:`${currentStreak}일`,c:"#60A5FA"}].map(s=>(
-                <div key={s.l} style={{background:crd,borderRadius:16,padding:"16px 12px",border:`1px solid ${bdr}`}}>
+              {[{l:"이번달",v:`${monthlyCount}회`,c:org,k:"month"},{l:"총 시간",v:totalTimeLabel,c:grn,k:"time"},{l:"연속",v:`${currentStreak}일`,c:"#60A5FA",k:"streak"}].map(s=>(
+                <div key={s.l} onClick={()=>setHomeStatModal(s.k)} style={{background:crd,borderRadius:16,padding:"16px 12px",border:`1px solid ${bdr}`,cursor:"pointer",position:"relative"}}>
                   <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:F}}>{s.v}</div>
                   <div style={{fontSize:11,color:sub,marginTop:4,fontWeight:600,fontFamily:F}}>{s.l}</div>
+                  <div style={{position:"absolute",top:8,right:10,fontSize:10,color:"#333"}}>⋯</div>
                 </div>
               ))}
             </div>
@@ -738,8 +788,9 @@ export default function App() {
                 <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
                   <input value={ex.name} onChange={e=>upName(ei,e.target.value)} placeholder="운동 이름"
                     style={{flex:1,minWidth:0,background:"#1E1E20",border:"none",borderRadius:10,padding:"10px 12px",color:newRec.type==="health"?org:grn,fontSize:16,fontWeight:700,fontFamily:F}}/>
-                  <button onClick={()=>togFav(ex.name)} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",flexShrink:0,padding:"4px"}}>
-                    {favs.includes(ex.name)?"⭐":"☆"}
+                  <button onClick={()=>ex.name&&togFav(ex.name)} title={favs.includes(ex.name)&&ex.name?"즐겨찾기 해제":"즐겨찾기 추가"}
+                    style={{background:favs.includes(ex.name)&&ex.name?"rgba(251,191,36,0.18)":"none",border:favs.includes(ex.name)&&ex.name?"1px solid rgba(251,191,36,0.45)":"1px solid transparent",borderRadius:9,fontSize:18,cursor:ex.name?"pointer":"default",flexShrink:0,padding:"4px 7px",transition:"all 0.2s"}}>
+                    {favs.includes(ex.name)&&ex.name?"⭐":"☆"}
                   </button>
                   <button onClick={()=>delEx(ei)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:13,cursor:"pointer",flexShrink:0,padding:"4px 8px",color:"#c0392b"}}>✕</button>
                 </div>
