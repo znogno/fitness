@@ -109,7 +109,13 @@ export default function App() {
   const [exCounters, setExCounters]             = useState({});
   const [workoutDone, setWorkoutDone]           = useState(false);
   const [workoutSubType, setWorkoutSubType]     = useState("upper");
-  const startTime = useRef(new Date());
+  const [workoutStarted, setWorkoutStarted]     = useState(false);
+  const [workoutElapsedSecs, setWorkoutElapsedSecs] = useState(0);
+  const [calendarYear, setCalendarYear]         = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth]       = useState(new Date().getMonth());
+  const startTime       = useRef(new Date());
+  const workoutClockRef = useRef(null);
+  const timerEndTsRef   = useRef(null);
 
   const [newRec, setNewRec] = useState({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
   const [favs, setFavs]     = useState(DEFAULT_FAV);
@@ -143,20 +149,21 @@ export default function App() {
   useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
 
   useEffect(() => {
-    if (timerOn && timerDisp > 0) {
-      timerRef.current = setInterval(() => {
-        setTimerDisp(p => {
-          if (p <= 1) {
-            setTimerOn(false);
-            notifyRestComplete();
-            toast2("⏱ 휴식 완료! 다음 세트!");
-            setTimeout(() => setTimerDisp(timerSecRef.current), 600);
-            return 0;
-          }
-          return p - 1;
-        });
-      }, 1000);
-    }
+    if (!timerOn || timerDisp <= 0) return;
+    timerEndTsRef.current = Date.now() + timerDisp * 1000;
+    timerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((timerEndTsRef.current - Date.now()) / 1000));
+      if (remaining <= 0) {
+        clearInterval(timerRef.current);
+        setTimerDisp(0);
+        setTimerOn(false);
+        notifyRestComplete();
+        toast2("⏱ 휴식 완료! 다음 세트!");
+        setTimeout(() => setTimerDisp(timerSecRef.current), 600);
+      } else {
+        setTimerDisp(remaining);
+      }
+    }, 500);
     return () => clearInterval(timerRef.current);
   }, [timerOn, notifs.rest]);
 
@@ -245,14 +252,37 @@ export default function App() {
   const currentStreak = getCurrentStreak();
   const pct    = (timerDisp / timerSec) * 100;
   const fmt    = (sec) => `${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
+  const fmtClock = (sec) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  };
   const go     = (tab, sub=null) => { setActiveTab(tab); setSubView(sub); setSelRec(null); };
+
+  const beginWorkoutClock = () => {
+    startTime.current = new Date();
+    setWorkoutElapsedSecs(0);
+    clearInterval(workoutClockRef.current);
+    workoutClockRef.current = setInterval(() => {
+      setWorkoutElapsedSecs(Math.floor((Date.now() - startTime.current.getTime()) / 1000));
+    }, 1000);
+  };
+
+  const startWorkout = () => {
+    setWorkoutStarted(true);
+    beginWorkoutClock();
+    toast2("🚀 운동 시작! 파이팅!");
+  };
 
   const handleStartWorkout = (r) => {
     setWorkoutExercises(normalizeWorkoutExercises(r.exercises));
     setWorkoutSubType(r.subType || "upper");
     setExCounters({});
-    startTime.current = new Date();
     setWorkoutDone(false);
+    setWorkoutStarted(true);
+    beginWorkoutClock();
     go("workout");
     toast2("🚀 운동 시작! 파이팅!");
   };
@@ -273,6 +303,8 @@ export default function App() {
   };
 
   const finishWorkout = () => {
+    clearInterval(workoutClockRef.current);
+    setWorkoutStarted(false);
     const d = new Date();
     const rec = {
       id: Date.now(),
@@ -432,8 +464,8 @@ export default function App() {
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <button onClick={()=>{setWorkoutDone(false);setExCounters({});startTime.current=new Date();go("record");}} style={{padding:14,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:14,color:"#aaa",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>📋 기록 보기</button>
-              <button onClick={()=>{setWorkoutDone(false);setExCounters({});startTime.current=new Date();go("home");}} style={{padding:14,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:14,color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:F}}>🏠 홈으로</button>
+              <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("record");}} style={{padding:14,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:14,color:"#aaa",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>📋 기록 보기</button>
+              <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("home");}} style={{padding:14,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:14,color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:F}}>🏠 홈으로</button>
             </div>
           </div>
         </div>
@@ -469,6 +501,24 @@ export default function App() {
                 </div>
               ))}
             </div>
+            {timerOn&&(
+              <div onClick={()=>go("workout")} style={{background:"rgba(255,107,53,0.1)",border:`1px solid rgba(255,107,53,0.3)`,borderRadius:16,padding:"14px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:org,fontFamily:F}}>⏱ 휴식 타이머 작동 중</div>
+                  <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>터치하여 운동 화면으로 →</div>
+                </div>
+                <div style={{fontSize:34,fontWeight:900,color:org,letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
+              </div>
+            )}
+            {workoutStarted&&(
+              <div onClick={()=>go("workout")} style={{background:"rgba(34,197,94,0.08)",border:`1px solid rgba(34,197,94,0.25)`,borderRadius:16,padding:"14px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:grn,fontFamily:F}}>🔥 운동 진행 중</div>
+                  <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>터치하여 운동 화면으로 →</div>
+                </div>
+                <div style={{fontSize:28,fontWeight:900,color:grn,letterSpacing:-1,fontFamily:F}}>{fmtClock(workoutElapsedSecs)}</div>
+              </div>
+            )}
             <SL>빠른 시작</SL>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
               <button onClick={()=>go("workout")} style={{background:"linear-gradient(135deg,#FF6B35,#FF3A6E)",border:"none",borderRadius:18,padding:"20px 16px",color:"#fff",cursor:"pointer",textAlign:"left"}}>
@@ -502,6 +552,48 @@ export default function App() {
         {activeTab==="record"&&subView===null&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             <button onClick={()=>setSubView("add")} style={{width:"100%",padding:15,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:14,fontFamily:F}}>+ 새 운동 기록 입력</button>
+
+            {/* 월간 달력 */}
+            <Crd style={{marginBottom:14,padding:"14px 14px 10px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <button onClick={()=>{if(calendarMonth===0){setCalendarMonth(11);setCalendarYear(y=>y-1);}else setCalendarMonth(m=>m-1);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>‹</button>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>{calendarYear}년 {calendarMonth+1}월</div>
+                <button onClick={()=>{if(calendarMonth===11){setCalendarMonth(0);setCalendarYear(y=>y+1);}else setCalendarMonth(m=>m+1);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>›</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
+                {["일","월","화","수","목","금","토"].map((d,i)=>(
+                  <div key={d} style={{textAlign:"center",fontSize:10,fontWeight:700,color:i===0?"#ef4444":i===6?"#60A5FA":"#555",fontFamily:F}}>{d}</div>
+                ))}
+              </div>
+              {(()=>{
+                const firstDay = new Date(calendarYear,calendarMonth,1).getDay();
+                const daysInMonth = new Date(calendarYear,calendarMonth+1,0).getDate();
+                const cells=[];
+                for(let i=0;i<firstDay;i++) cells.push(null);
+                for(let d=1;d<=daysInMonth;d++) cells.push(d);
+                while(cells.length%7!==0) cells.push(null);
+                const todayObj=new Date();
+                const tD=todayObj.getDate(),tM=todayObj.getMonth(),tY=todayObj.getFullYear();
+                return(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+                    {cells.map((d,i)=>{
+                      if(!d) return <div key={i}/>;
+                      const ds=`${calendarYear}-${String(calendarMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+                      const hasW=recordDateSet.has(ds);
+                      const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
+                      const dow=(firstDay+d-1)%7;
+                      return(
+                        <div key={i} style={{textAlign:"center",padding:"5px 2px",borderRadius:8,background:hasW?"rgba(255,107,53,0.18)":isToday?"rgba(96,165,250,0.13)":"transparent",border:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",cursor:"default"}}>
+                          <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:hasW?org:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc,fontFamily:F}}>{d}</div>
+                          {hasW&&<div style={{width:4,height:4,borderRadius:"50%",background:org,margin:"1px auto 0"}}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </Crd>
+
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               {[{id:"all",label:"전체"},{id:"health",label:"🦁 헬스"},{id:"golf",label:"⛳ 골프"}].map(f=>(
                 <button key={f.id} onClick={()=>setRecFilter(f.id)} style={{padding:"7px 14px",borderRadius:20,border:"none",background:recFilter===f.id?org:"#1E1E20",color:recFilter===f.id?"#fff":"#555",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F,transition:"all 0.2s"}}>{f.label}</button>
@@ -723,6 +815,23 @@ export default function App() {
         {/* WORKOUT */}
         {activeTab==="workout"&&!workoutDone&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
+            {/* 운동 시계 */}
+            <Crd style={{textAlign:"center",padding:"20px 18px"}}>
+              {!workoutStarted ? (
+                <>
+                  <div style={{fontSize:13,color:sub,marginBottom:16,fontFamily:F}}>운동 준비 완료!</div>
+                  <button onClick={startWorkout} style={{width:"100%",padding:16,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 8px 24px rgba(255,107,53,0.3)`}}>
+                    ▶ 운동 시작
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{fontSize:11,color:sub,fontFamily:F,marginBottom:4,letterSpacing:0.5,textTransform:"uppercase"}}>운동 경과 시간</div>
+                  <div style={{fontSize:52,fontWeight:900,color:org,letterSpacing:-2,fontFamily:F,lineHeight:1}}>{fmtClock(workoutElapsedSecs)}</div>
+                  <div style={{fontSize:12,color:"#444",marginTop:6,fontFamily:F}}>🔥 운동 중</div>
+                </>
+              )}
+            </Crd>
             <Crd>
               <SL>휴식 타이머</SL>
               <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
@@ -787,9 +896,15 @@ export default function App() {
                   })}
                   <button onClick={addWorkoutExercise} style={{width:"100%",padding:14,background:"#141414",border:`1px dashed ${bdr}`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:14,fontFamily:F}}>+ 운동 추가</button>
                 </Crd>
-                <button onClick={finishWorkout} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>
-                  🏁 운동 완료 & 저장
-                </button>
+                {workoutStarted ? (
+                  <button onClick={finishWorkout} style={{width:"100%",padding:16,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(34,197,94,0.2)",fontFamily:F}}>
+                    🏁 운동 종료 & 저장
+                  </button>
+                ) : (
+                  <button onClick={startWorkout} style={{width:"100%",padding:16,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:`0 8px 24px rgba(255,107,53,0.3)`,fontFamily:F}}>
+                    ▶ 운동 시작
+                  </button>
+                )}
               </div>
             )}
           </div>
