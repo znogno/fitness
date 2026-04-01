@@ -668,19 +668,20 @@ export default function App() {
                       const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
                       const isSel=selectedCalDate===ds;
                       const dow=(firstDay+d-1)%7;
+                      const selColor=hasL&&!hasU&&!hasG?pur:hasG&&!hasU&&!hasL?grn:org;
                       const bgColor=isSel
-                        ? hasL?"rgba(168,85,247,0.3)":"rgba(255,107,53,0.28)"
+                        ? hasL&&!hasU&&!hasG?"rgba(168,85,247,0.3)":hasG&&!hasU&&!hasL?"rgba(34,197,94,0.28)":"rgba(255,107,53,0.28)"
                         : hasL&&!hasU?"rgba(168,85,247,0.15)"
                         : hasU&&hasL?"rgba(255,107,53,0.12)"
                         : hasU?"rgba(255,107,53,0.15)"
                         : hasG?"rgba(34,197,94,0.13)"
                         : isToday?"rgba(96,165,250,0.13)":"transparent";
-                      const txtColor=isSel?(hasL&&!hasU?pur:org):hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
+                      const txtColor=isSel?selColor:hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
                       return(
                         <div key={i} onClick={()=>hasW&&setSelectedCalDate(isSel?null:ds)}
                           style={{textAlign:"center",padding:"5px 2px",borderRadius:8,
                             background:bgColor,
-                            border:isSel?`1px solid ${hasL&&!hasU?pur:org}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
+                            border:isSel?`1px solid ${selColor}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
                             cursor:hasW?"pointer":"default"}}>
                           <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:txtColor,fontFamily:F}}>{d}</div>
                           <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:1,minHeight:5}}>
