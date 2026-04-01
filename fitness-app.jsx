@@ -117,6 +117,7 @@ export default function App() {
   const [workoutSubType, setWorkoutSubType]     = useState("upper");
   const [workoutStarted, setWorkoutStarted]     = useState(false);
   const [workoutElapsedSecs, setWorkoutElapsedSecs] = useState(0);
+  const [lastWorkoutRecId, setLastWorkoutRecId]     = useState(null);
   const [calendarYear, setCalendarYear]         = useState(new Date().getFullYear());
   const [calendarMonth, setCalendarMonth]       = useState(new Date().getMonth());
   const startTime       = useRef(new Date());
@@ -224,6 +225,7 @@ export default function App() {
     if (!str) return 0;
     const hourMatch = str.match(/(\d+)\s*h/i);
     const minuteMatch = str.match(/(\d+)\s*분/i);
+    const secMatch = str.match(/(\d+)\s*초/i);
     let minutes = 0;
     if (hourMatch) {
       minutes += parseInt(hourMatch[1], 10) * 60;
@@ -232,8 +234,12 @@ export default function App() {
       minutes += parseInt(minuteMatch[1], 10);
     }
     if (!hourMatch && !minuteMatch) {
-      const numeric = parseInt(str, 10);
-      if (!isNaN(numeric)) minutes = numeric;
+      if (secMatch) {
+        minutes = Math.floor(parseInt(secMatch[1], 10) / 60);
+      } else {
+        const numeric = parseInt(str, 10);
+        if (!isNaN(numeric)) minutes = numeric;
+      }
     }
     return minutes;
   };
@@ -347,6 +353,7 @@ export default function App() {
       })).filter(e=>e.name && e.sets.length>0),
     };
     setRecords(p=>[rec,...p]);
+    setLastWorkoutRecId(rec.id);
     setWorkoutDone(true);
   };
 
@@ -484,7 +491,7 @@ export default function App() {
             <div style={{fontSize:14,color:"#666",fontFamily:F,marginBottom:24}}>기록이 자동 저장됐어요 💪</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
               <div style={{background:"#1A1A1C",borderRadius:16,padding:18}}>
-                <div style={{fontSize:26,fontWeight:900,color:org,fontFamily:F}}>{elapsed()}분</div>
+                <div style={{fontSize:26,fontWeight:900,color:org,fontFamily:F}}>{fmtClock(workoutElapsedSecs)}</div>
                 <div style={{fontSize:11,color:"#555",marginTop:4,fontFamily:F}}>운동 시간</div>
               </div>
               <div style={{background:"#1A1A1C",borderRadius:16,padding:18}}>
@@ -492,9 +499,12 @@ export default function App() {
                 <div style={{fontSize:11,color:"#555",marginTop:4,fontFamily:F}}>총 세트</div>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("record");}} style={{padding:14,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:14,color:"#aaa",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>📋 기록 보기</button>
-              <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("home");}} style={{padding:14,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:14,color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:F}}>🏠 홈으로</button>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("record");}} style={{padding:14,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:14,color:"#aaa",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>📋 기록 보기</button>
+                <button onClick={()=>{setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);go("home");}} style={{padding:14,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:14,color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:F}}>🏠 홈으로</button>
+              </div>
+              <button onClick={()=>{if(!window.confirm("이 기록을 삭제하시겠어요?"))return;setRecords(p=>p.filter(r=>r.id!==lastWorkoutRecId));setWorkoutDone(false);setExCounters({});setWorkoutStarted(false);setWorkoutElapsedSecs(0);toast2("🗑️ 기록이 삭제되었습니다.");go("home");}} style={{padding:14,background:"#1A1A1C",border:"1px solid #FF3A6E",borderRadius:14,color:"#FF6B6B",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>🗑️ 기록 삭제</button>
             </div>
           </div>
         </div>
