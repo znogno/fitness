@@ -886,6 +886,20 @@ export default function App() {
             {editRec&&(
               <>
                 <Crd>
+                  <SL>운동 종류</SL>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                    {[{id:"upper",type:"health",icon:"🦁",label:"상체",c:org,bg:"rgba(255,107,53,0.15)"},{id:"lower",type:"health",icon:"🐘",label:"하체",c:pur,bg:"rgba(168,85,247,0.15)"},{id:"",type:"golf",icon:"⛳",label:"골프",c:grn,bg:"rgba(34,197,94,0.15)"}].map(t=>{
+                      const active=editRec.type===t.type&&(t.type==="golf"||editRec.subType===t.id);
+                      return(
+                        <button key={t.id+t.type} onClick={()=>setEditRec(p=>({...p,type:t.type,subType:t.id}))}
+                          style={{padding:"10px 4px",background:active?t.bg:"#1A1A1C",
+                            border:`1px solid ${active?t.c:"#2a2a2a"}`,borderRadius:12,
+                            color:active?t.c:"#555",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F,transition:"all 0.2s"}}>
+                          {t.icon} {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <SL>루틴 이름</SL>
                   <input value={editRec.title} onChange={e=>setEditRec(p=>({...p,title:e.target.value}))}
                     style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:4,fontFamily:F}}/>
