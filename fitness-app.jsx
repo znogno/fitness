@@ -271,9 +271,10 @@ export default function App() {
     const sortedDates = [...recordDateSet].sort();
     let lastDate = sortedDates[sortedDates.length - 1];
     let streak = 0;
+    const toLocalStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     const normalize = (date) => new Date(new Date(date).getFullYear(), new Date(date).getMonth(), new Date(date).getDate());
     let current = normalize(lastDate);
-    while (recordDateSet.has(current.toISOString().slice(0,10))) {
+    while (recordDateSet.has(toLocalStr(current))) {
       streak += 1;
       current = new Date(current.getFullYear(), current.getMonth(), current.getDate() - 1);
     }
@@ -535,36 +536,68 @@ export default function App() {
             <div onClick={e=>e.stopPropagation()} style={{background:"#141414",borderRadius:"24px 24px 0 0",padding:"24px 24px 40px",width:"100%",maxWidth:390,border:"1px solid #222"}}>
               <div style={{width:40,height:4,borderRadius:2,background:"#333",margin:"0 auto 20px"}}/>
               <div style={{fontSize:16,fontWeight:800,fontFamily:F,marginBottom:6}}>
-                {homeStatModal==="month"?"이번달 기록":homeStatModal==="time"?"총 시간 기록":"연속 운동 기록"}
+                {homeStatModal==="month"?"이번달 횟수":homeStatModal==="time"?"이번달 총 시간":"연속 운동일수"}
               </div>
               <div style={{fontSize:13,color:sub,fontFamily:F,marginBottom:24}}>
                 {homeStatModal==="month"&&`이번달 운동 ${monthlyCount}회`}
                 {homeStatModal==="time"&&`이번달 총 ${totalTimeLabel}`}
                 {homeStatModal==="streak"&&`현재 ${currentStreak}일 연속`}
               </div>
-              <button onClick={()=>{
-                const now=new Date();
-                if(window.confirm("이번달 운동 기록을 모두 삭제하시겠어요?")) {
-                  setRecords(p=>p.filter(r=>{
-                    if(!r.date) return true;
-                    const d=new Date(r.date);
-                    return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
-                  }));
-                  toast2("이번달 기록이 초기화됐어요.");
-                  setHomeStatModal(null);
-                }
-              }} style={{width:"100%",padding:15,background:"rgba(255,107,53,0.12)",border:"1px solid rgba(255,107,53,0.3)",borderRadius:14,color:org,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                🗑️ 이번달 기록 초기화
-              </button>
-              <button onClick={()=>{
-                if(window.confirm("전체 운동 기록을 삭제하시겠어요? 되돌릴 수 없습니다.")) {
-                  setRecords([]);
-                  toast2("전체 기록이 초기화됐어요.");
-                  setHomeStatModal(null);
-                }
-              }} style={{width:"100%",padding:15,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:14,color:"#ef4444",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                ⚠️ 전체 기록 삭제
-              </button>
+              {homeStatModal==="month"&&(
+                <button onClick={()=>{
+                  const now=new Date();
+                  if(window.confirm("이번달 운동 횟수를 초기화하시겠어요?\n이번달 운동 기록이 모두 삭제됩니다.")) {
+                    setRecords(p=>p.filter(r=>{
+                      if(!r.date) return true;
+                      const d=new Date(r.date);
+                      return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
+                    }));
+                    toast2("이번달 운동 횟수가 초기화됐어요.");
+                    setHomeStatModal(null);
+                  }
+                }} style={{width:"100%",padding:15,background:"rgba(255,107,53,0.12)",border:"1px solid rgba(255,107,53,0.3)",borderRadius:14,color:org,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                  🗑️ 이번달 횟수 초기화
+                </button>
+              )}
+              {homeStatModal==="time"&&(
+                <button onClick={()=>{
+                  const now=new Date();
+                  if(window.confirm("이번달 운동 시간을 초기화하시겠어요?\n이번달 운동 기록이 모두 삭제됩니다.")) {
+                    setRecords(p=>p.filter(r=>{
+                      if(!r.date) return true;
+                      const d=new Date(r.date);
+                      return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
+                    }));
+                    toast2("이번달 운동 시간이 초기화됐어요.");
+                    setHomeStatModal(null);
+                  }
+                }} style={{width:"100%",padding:15,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:14,color:grn,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                  🗑️ 이번달 총 시간 초기화
+                </button>
+              )}
+              {homeStatModal==="streak"&&(
+                <>
+                  <button onClick={()=>{
+                    if(window.confirm("오늘 운동 기록을 삭제하시겠어요?\n연속 기록이 끊어집니다.")) {
+                      const todayS=todayStr();
+                      setRecords(p=>p.filter(r=>r.date!==todayS));
+                      toast2("오늘 운동 기록이 삭제됐어요.");
+                      setHomeStatModal(null);
+                    }
+                  }} style={{width:"100%",padding:15,background:"rgba(96,165,250,0.12)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:14,color:"#60A5FA",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                    🗑️ 오늘 기록 삭제 (연속 끊기)
+                  </button>
+                  <button onClick={()=>{
+                    if(window.confirm("연속 기록을 완전히 초기화하시겠어요?\n전체 운동 기록이 삭제됩니다.")) {
+                      setRecords([]);
+                      toast2("연속 기록이 초기화됐어요.");
+                      setHomeStatModal(null);
+                    }
+                  }} style={{width:"100%",padding:15,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:14,color:"#ef4444",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                    ⚠️ 연속 기록 전체 초기화
+                  </button>
+                </>
+              )}
               <button onClick={()=>setHomeStatModal(null)} style={{width:"100%",padding:15,background:"#1E1E20",border:"none",borderRadius:14,color:"#888",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>
                 취소
               </button>
