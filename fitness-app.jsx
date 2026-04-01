@@ -633,6 +633,15 @@ export default function App() {
                 <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>{calendarYear}년 {calendarMonth+1}월</div>
                 <button onClick={()=>{if(calendarMonth===11){setCalendarMonth(0);setCalendarYear(y=>y+1);}else setCalendarMonth(m=>m+1);setSelectedCalDate(null);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>›</button>
               </div>
+              {/* 범례 */}
+              <div style={{display:"flex",gap:12,marginBottom:10,flexWrap:"wrap"}}>
+                {[{c:org,l:"🦁 상체"},{c:pur,l:"🐘 하체"},{c:grn,l:"⛳ 골프"}].map(x=>(
+                  <div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:x.c,flexShrink:0}}/>
+                    <span style={{fontSize:10,color:sub,fontFamily:F,fontWeight:600}}>{x.l}</span>
+                  </div>
+                ))}
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
                 {["일","월","화","수","목","금","토"].map((d,i)=>(
                   <div key={d} style={{textAlign:"center",fontSize:10,fontWeight:700,color:i===0?"#ef4444":i===6?"#60A5FA":"#555",fontFamily:F}}>{d}</div>
@@ -931,18 +940,32 @@ export default function App() {
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             {/* 운동 시계 */}
             <Crd style={{textAlign:"center",padding:"20px 18px"}}>
+              {/* 상체/하체 선택 */}
+              <div style={{display:"flex",gap:8,marginBottom:16,justifyContent:"center"}}>
+                {[{id:"upper",icon:"🦁",label:"상체",color:org},{id:"lower",icon:"🐘",label:"하체",color:pur}].map(t=>(
+                  <button key={t.id} onClick={()=>setWorkoutSubType(t.id)}
+                    style={{flex:1,padding:"10px 0",borderRadius:12,border:`1px solid ${workoutSubType===t.id?t.color:"#2a2a2a"}`,
+                      background:workoutSubType===t.id?(t.id==="upper"?"rgba(255,107,53,0.18)":"rgba(168,85,247,0.18)"):"#1A1A1C",
+                      color:workoutSubType===t.id?t.color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F,transition:"all 0.2s"}}>
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
               {!workoutStarted ? (
                 <>
                   <div style={{fontSize:13,color:sub,marginBottom:16,fontFamily:F}}>운동 준비 완료!</div>
-                  <button onClick={startWorkout} style={{width:"100%",padding:16,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 8px 24px rgba(255,107,53,0.3)`}}>
+                  <button onClick={startWorkout}
+                    style={{width:"100%",padding:16,background:workoutSubType==="lower"?`linear-gradient(135deg,${pur},#7C3AED)`:`linear-gradient(135deg,${org},#FF3A6E)`,
+                      border:"none",borderRadius:16,color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,
+                      boxShadow:workoutSubType==="lower"?"0 8px 24px rgba(168,85,247,0.3)":"0 8px 24px rgba(255,107,53,0.3)"}}>
                     ▶ 운동 시작
                   </button>
                 </>
               ) : (
                 <>
                   <div style={{fontSize:11,color:sub,fontFamily:F,marginBottom:4,letterSpacing:0.5,textTransform:"uppercase"}}>운동 경과 시간</div>
-                  <div style={{fontSize:52,fontWeight:900,color:org,letterSpacing:-2,fontFamily:F,lineHeight:1}}>{fmtClock(workoutElapsedSecs)}</div>
-                  <div style={{fontSize:12,color:"#444",marginTop:6,marginBottom:14,fontFamily:F}}>🔥 운동 중</div>
+                  <div style={{fontSize:52,fontWeight:900,color:workoutSubType==="lower"?pur:org,letterSpacing:-2,fontFamily:F,lineHeight:1}}>{fmtClock(workoutElapsedSecs)}</div>
+                  <div style={{fontSize:12,color:"#444",marginTop:6,marginBottom:14,fontFamily:F}}>{workoutSubType==="lower"?"🐘 하체 운동 중":"🦁 상체 운동 중"}</div>
                   <button onClick={finishWorkout} style={{width:"100%",padding:13,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:14,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:"0 6px 18px rgba(34,197,94,0.25)"}}>
                     ■ 운동 정지 & 저장
                   </button>
