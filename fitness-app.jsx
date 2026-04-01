@@ -257,8 +257,9 @@ export default function App() {
   const monthExerciseCount = new Set(thisMonthRecords.flatMap(r => (r.exercises || []).map(ex => ex.name).filter(Boolean))).size;
   const monthSetCount = thisMonthRecords.reduce((sum, r) => sum + (Array.isArray(r.exercises) ? r.exercises.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.length : 0), 0) : 0), 0);
   const recordDateSet  = new Set(records.map(r => r.date).filter(Boolean));
-  const healthDateSet  = new Set(records.filter(r=>r.type==="health").map(r=>r.date).filter(Boolean));
   const golfDateSet    = new Set(records.filter(r=>r.type==="golf").map(r=>r.date).filter(Boolean));
+  const upperDateSet   = new Set(records.filter(r=>r.type==="health"&&r.subType==="upper").map(r=>r.date).filter(Boolean));
+  const lowerDateSet   = new Set(records.filter(r=>r.type==="health"&&r.subType==="lower").map(r=>r.date).filter(Boolean));
   const getCurrentStreak = () => {
     if (recordDateSet.size === 0) return 0;
     const sortedDates = [...recordDateSet].sort();
@@ -424,7 +425,7 @@ export default function App() {
   const sub = isLight?"#888":"#555";
   const F   = font.value;
   const rootFontSize = (font.id==="nanumbrush" || font.id==="nanumpen") ? 15 : 14;
-  const org = "#FF6B35"; const grn = "#22C55E";
+  const org = "#FF6B35"; const grn = "#22C55E"; const pur = "#A855F7";
 
 
   // 날짜 input — 공통 스타일 (overflow fix)
@@ -651,21 +652,31 @@ export default function App() {
                     {cells.map((d,i)=>{
                       if(!d) return <div key={i}/>;
                       const ds=`${calendarYear}-${String(calendarMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-                      const hasH=healthDateSet.has(ds);
+                      const hasU=upperDateSet.has(ds);
+                      const hasL=lowerDateSet.has(ds);
                       const hasG=golfDateSet.has(ds);
-                      const hasW=hasH||hasG;
+                      const hasW=hasU||hasL||hasG;
                       const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
                       const isSel=selectedCalDate===ds;
                       const dow=(firstDay+d-1)%7;
+                      const bgColor=isSel
+                        ? hasL?"rgba(168,85,247,0.3)":"rgba(255,107,53,0.28)"
+                        : hasL&&!hasU?"rgba(168,85,247,0.15)"
+                        : hasU&&hasL?"rgba(255,107,53,0.12)"
+                        : hasU?"rgba(255,107,53,0.15)"
+                        : hasG?"rgba(34,197,94,0.13)"
+                        : isToday?"rgba(96,165,250,0.13)":"transparent";
+                      const txtColor=isSel?(hasL&&!hasU?pur:org):hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
                       return(
                         <div key={i} onClick={()=>hasW&&setSelectedCalDate(isSel?null:ds)}
                           style={{textAlign:"center",padding:"5px 2px",borderRadius:8,
-                            background:isSel?"rgba(255,107,53,0.28)":hasH&&hasG?"rgba(255,107,53,0.12)":hasH?"rgba(255,107,53,0.15)":hasG?"rgba(34,197,94,0.13)":isToday?"rgba(96,165,250,0.13)":"transparent",
-                            border:isSel?`1px solid ${org}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
+                            background:bgColor,
+                            border:isSel?`1px solid ${hasL&&!hasU?pur:org}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
                             cursor:hasW?"pointer":"default"}}>
-                          <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:isSel?org:hasH?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc,fontFamily:F}}>{d}</div>
+                          <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:txtColor,fontFamily:F}}>{d}</div>
                           <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:1,minHeight:5}}>
-                            {hasH&&<div style={{width:4,height:4,borderRadius:"50%",background:org}}/>}
+                            {hasU&&<div style={{width:4,height:4,borderRadius:"50%",background:org}}/>}
+                            {hasL&&<div style={{width:4,height:4,borderRadius:"50%",background:pur}}/>}
                             {hasG&&<div style={{width:4,height:4,borderRadius:"50%",background:grn}}/>}
                           </div>
                         </div>
