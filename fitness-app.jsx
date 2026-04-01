@@ -75,7 +75,13 @@ const normalizeWorkoutExercises = (exs) => exs.map((ex, idx) => ({
 }));
 
 export default function App() {
-  const [font, setFont]           = useState(FONTS[0]);
+  const [font, setFont]           = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("fitness-font");
+      if (raw) { const saved=JSON.parse(raw); const found=FONTS.find(f=>f.id===saved.id); if(found) return found; }
+    } catch {}
+    return FONTS[0];
+  });
   const [activeTab, setActiveTab] = useState("home");
   const [subView, setSubView]     = useState(null);
   const [records, setRecords]     = useState(() => {
@@ -118,7 +124,14 @@ export default function App() {
   const timerEndTsRef   = useRef(null);
 
   const [newRec, setNewRec] = useState({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
-  const [favs, setFavs]     = useState(DEFAULT_FAV);
+  const [favs, setFavs]     = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("fitness-favs");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return DEFAULT_FAV;
+  });
+  const [selectedCalDate, setSelectedCalDate] = useState(null);
 
   const [course, setCourse]               = useState("");
   const [golfPars, setGolfPars]           = useState(Array(18).fill(4));
@@ -177,6 +190,13 @@ export default function App() {
     window.localStorage.setItem("fitness-golf-rounds", JSON.stringify(golfRounds));
   }, [golfRounds]);
 
+  useEffect(() => {
+    window.localStorage.setItem("fitness-font", JSON.stringify(font));
+  }, [font]);
+
+  useEffect(() => {
+    window.localStorage.setItem("fitness-favs", JSON.stringify(favs));
+  }, [favs]);
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const notifyRestComplete = () => {
@@ -235,7 +255,9 @@ export default function App() {
   const monthActiveDays = new Set(thisMonthRecords.map(r => r.date).filter(Boolean)).size;
   const monthExerciseCount = new Set(thisMonthRecords.flatMap(r => (r.exercises || []).map(ex => ex.name).filter(Boolean))).size;
   const monthSetCount = thisMonthRecords.reduce((sum, r) => sum + (Array.isArray(r.exercises) ? r.exercises.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.length : 0), 0) : 0), 0);
-  const recordDateSet = new Set(records.map(r => r.date).filter(Boolean));
+  const recordDateSet  = new Set(records.map(r => r.date).filter(Boolean));
+  const healthDateSet  = new Set(records.filter(r=>r.type==="health").map(r=>r.date).filter(Boolean));
+  const golfDateSet    = new Set(records.filter(r=>r.type==="golf").map(r=>r.date).filter(Boolean));
   const getCurrentStreak = () => {
     if (recordDateSet.size === 0) return 0;
     const sortedDates = [...recordDateSet].sort();
@@ -533,7 +555,7 @@ export default function App() {
               </button>
             </div>
             <SL>최근 운동</SL>
-            {[...records].sort((a,b)=>new Date(b.date) - new Date(a.date)).slice(0,2).map(r=>(
+            {[...records].sort((a,b)=>new Date(b.date) - new Date(a.date)).slice(0,3).map(r=>(
               <div key={r.id} onClick={()=>{setSelRec(r);setActiveTab("record");setSubView("detail");}} style={{background:crd,borderRadius:16,padding:15,border:`1px solid ${bdr}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:42,height:42,borderRadius:12,background:r.type==="health"?"rgba(255,107,53,0.15)":"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{getIcon(r.type,r.subType)}</div>
@@ -556,9 +578,9 @@ export default function App() {
             {/* 월간 달력 */}
             <Crd style={{marginBottom:14,padding:"14px 14px 10px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <button onClick={()=>{if(calendarMonth===0){setCalendarMonth(11);setCalendarYear(y=>y-1);}else setCalendarMonth(m=>m-1);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>‹</button>
+                <button onClick={()=>{if(calendarMonth===0){setCalendarMonth(11);setCalendarYear(y=>y-1);}else setCalendarMonth(m=>m-1);setSelectedCalDate(null);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>‹</button>
                 <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>{calendarYear}년 {calendarMonth+1}월</div>
-                <button onClick={()=>{if(calendarMonth===11){setCalendarMonth(0);setCalendarYear(y=>y+1);}else setCalendarMonth(m=>m+1);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>›</button>
+                <button onClick={()=>{if(calendarMonth===11){setCalendarMonth(0);setCalendarYear(y=>y+1);}else setCalendarMonth(m=>m+1);setSelectedCalDate(null);}} style={{background:"none",border:"none",color:org,fontSize:20,cursor:"pointer",padding:"0 6px",lineHeight:1}}>›</button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
                 {["일","월","화","수","목","금","토"].map((d,i)=>(
@@ -579,16 +601,46 @@ export default function App() {
                     {cells.map((d,i)=>{
                       if(!d) return <div key={i}/>;
                       const ds=`${calendarYear}-${String(calendarMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-                      const hasW=recordDateSet.has(ds);
+                      const hasH=healthDateSet.has(ds);
+                      const hasG=golfDateSet.has(ds);
+                      const hasW=hasH||hasG;
                       const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
+                      const isSel=selectedCalDate===ds;
                       const dow=(firstDay+d-1)%7;
                       return(
-                        <div key={i} style={{textAlign:"center",padding:"5px 2px",borderRadius:8,background:hasW?"rgba(255,107,53,0.18)":isToday?"rgba(96,165,250,0.13)":"transparent",border:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",cursor:"default"}}>
-                          <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:hasW?org:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc,fontFamily:F}}>{d}</div>
-                          {hasW&&<div style={{width:4,height:4,borderRadius:"50%",background:org,margin:"1px auto 0"}}/>}
+                        <div key={i} onClick={()=>hasW&&setSelectedCalDate(isSel?null:ds)}
+                          style={{textAlign:"center",padding:"5px 2px",borderRadius:8,
+                            background:isSel?"rgba(255,107,53,0.28)":hasH&&hasG?"rgba(255,107,53,0.12)":hasH?"rgba(255,107,53,0.15)":hasG?"rgba(34,197,94,0.13)":isToday?"rgba(96,165,250,0.13)":"transparent",
+                            border:isSel?`1px solid ${org}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
+                            cursor:hasW?"pointer":"default"}}>
+                          <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:isSel?org:hasH?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc,fontFamily:F}}>{d}</div>
+                          <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:1,minHeight:5}}>
+                            {hasH&&<div style={{width:4,height:4,borderRadius:"50%",background:org}}/>}
+                            {hasG&&<div style={{width:4,height:4,borderRadius:"50%",background:grn}}/>}
+                          </div>
                         </div>
                       );
                     })}
+                  </div>
+                );
+              })()}
+              {/* 선택된 날짜 기록 */}
+              {selectedCalDate&&(()=>{
+                const dayRecs=records.filter(r=>r.date===selectedCalDate).sort((a,b)=>b.id-a.id);
+                if(dayRecs.length===0) return null;
+                return(
+                  <div style={{marginTop:12,borderTop:`1px solid ${bdr}`,paddingTop:10}}>
+                    <div style={{fontSize:11,color:sub,fontWeight:700,marginBottom:8,fontFamily:F}}>{fmtDate(selectedCalDate)}</div>
+                    {dayRecs.map(r=>(
+                      <div key={r.id} onClick={()=>{setSelRec(r);setSubView("detail");}} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:10,background:"#1A1A1C",marginBottom:6,cursor:"pointer"}}>
+                        <span style={{fontSize:16}}>{getIcon(r.type,r.subType)}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:700,color:r.type==="health"?org:grn,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
+                          <div style={{fontSize:10,color:sub,marginTop:1,fontFamily:F}}>{r.duration} · {(r.exercises||[]).length}종목</div>
+                        </div>
+                        <div style={{color:"#333",fontSize:14}}>›</div>
+                      </div>
+                    ))}
                   </div>
                 );
               })()}
@@ -670,7 +722,7 @@ export default function App() {
             </div>
 
             <SL>루틴 이름</SL>
-            <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} placeholder="예: 상체 루틴, 하체 데이..."
+            <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} placeholder=""
               style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:20,fontFamily:F}}/>
 
             <SL>⭐ 즐겨찾기 종목</SL>
@@ -828,7 +880,10 @@ export default function App() {
                 <>
                   <div style={{fontSize:11,color:sub,fontFamily:F,marginBottom:4,letterSpacing:0.5,textTransform:"uppercase"}}>운동 경과 시간</div>
                   <div style={{fontSize:52,fontWeight:900,color:org,letterSpacing:-2,fontFamily:F,lineHeight:1}}>{fmtClock(workoutElapsedSecs)}</div>
-                  <div style={{fontSize:12,color:"#444",marginTop:6,fontFamily:F}}>🔥 운동 중</div>
+                  <div style={{fontSize:12,color:"#444",marginTop:6,marginBottom:14,fontFamily:F}}>🔥 운동 중</div>
+                  <button onClick={finishWorkout} style={{width:"100%",padding:13,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:14,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:"0 6px 18px rgba(34,197,94,0.25)"}}>
+                    ■ 운동 정지 & 저장
+                  </button>
                 </>
               )}
             </Crd>
