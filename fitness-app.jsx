@@ -668,9 +668,9 @@ export default function App() {
                       const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
                       const isSel=selectedCalDate===ds;
                       const dow=(firstDay+d-1)%7;
-                      const selColor=hasL&&!hasU&&!hasG?pur:hasG&&!hasU&&!hasL?grn:org;
+                      const selColor=!hasW?org:hasL&&!hasU&&!hasG?pur:hasG&&!hasU&&!hasL?grn:org;
                       const bgColor=isSel
-                        ? hasL&&!hasU&&!hasG?"rgba(168,85,247,0.3)":hasG&&!hasU&&!hasL?"rgba(34,197,94,0.28)":"rgba(255,107,53,0.28)"
+                        ? !hasW?"rgba(255,107,53,0.18)":hasL&&!hasU&&!hasG?"rgba(168,85,247,0.3)":hasG&&!hasU&&!hasL?"rgba(34,197,94,0.28)":"rgba(255,107,53,0.28)"
                         : hasL&&!hasU?"rgba(168,85,247,0.15)"
                         : hasU&&hasL?"rgba(255,107,53,0.12)"
                         : hasU?"rgba(255,107,53,0.15)"
@@ -678,11 +678,11 @@ export default function App() {
                         : isToday?"rgba(96,165,250,0.13)":"transparent";
                       const txtColor=isSel?selColor:hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
                       return(
-                        <div key={i} onClick={()=>hasW&&setSelectedCalDate(isSel?null:ds)}
+                        <div key={i} onClick={()=>setSelectedCalDate(isSel?null:ds)}
                           style={{textAlign:"center",padding:"5px 2px",borderRadius:8,
                             background:bgColor,
                             border:isSel?`1px solid ${selColor}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
-                            cursor:hasW?"pointer":"default"}}>
+                            cursor:"pointer"}}>
                           <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:txtColor,fontFamily:F}}>{d}</div>
                           <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:1,minHeight:5}}>
                             {hasU&&<div style={{width:4,height:4,borderRadius:"50%",background:org}}/>}
@@ -698,7 +698,12 @@ export default function App() {
               {/* 선택된 날짜 기록 */}
               {selectedCalDate&&(()=>{
                 const dayRecs=records.filter(r=>r.date===selectedCalDate).sort((a,b)=>b.id-a.id);
-                if(dayRecs.length===0) return null;
+                if(dayRecs.length===0) return(
+                  <div style={{marginTop:12,borderTop:`1px solid ${bdr}`,paddingTop:10,textAlign:"center"}}>
+                    <div style={{fontSize:11,color:sub,fontWeight:700,marginBottom:6,fontFamily:F}}>{fmtDate(selectedCalDate)}</div>
+                    <div style={{fontSize:12,color:"#333",fontFamily:F}}>운동 기록이 없습니다</div>
+                  </div>
+                );
                 return(
                   <div style={{marginTop:12,borderTop:`1px solid ${bdr}`,paddingTop:10}}>
                     <div style={{fontSize:11,color:sub,fontWeight:700,marginBottom:8,fontFamily:F}}>{fmtDate(selectedCalDate)}</div>
