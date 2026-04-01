@@ -906,6 +906,11 @@ export default function App() {
                       );
                     })}
                   </div>
+                  <SL>날짜</SL>
+                  <div style={{marginBottom:14}}>
+                    <input type="date" value={editRec.date} onChange={e=>setEditRec(p=>({...p,date:e.target.value}))}
+                      style={dateInputStyle}/>
+                  </div>
                   <SL>루틴 이름</SL>
                   <input value={editRec.title} onChange={e=>setEditRec(p=>({...p,title:e.target.value}))}
                     style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:4,fontFamily:F}}/>
