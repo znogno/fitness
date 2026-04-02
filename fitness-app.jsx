@@ -813,7 +813,7 @@ export default function App() {
                   {r.exercises.map(e=><span key={e.name} style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F}}>{e.name}</span>)}
                 </div>
                 <button onClick={()=>handleStartWorkout(r)} style={{width:"100%",padding:12,background:r.type==="health"?"rgba(255,107,53,0.1)":"rgba(34,197,94,0.1)",border:`1px solid ${r.type==="health"?"rgba(255,107,53,0.25)":"rgba(34,197,94,0.25)"}`,borderRadius:12,color:r.type==="health"?org:grn,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>
-                  이 운동 오늘 그대로 시작하기 →
+                  오늘 그대로 시작하기 →
                 </button>
               </Crd>
               </div>
