@@ -1036,7 +1036,7 @@ export default function App() {
             </div>
 
             <SL>루틴 이름</SL>
-            <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} placeholder="예: 오늘 상체 루틴"
+            <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} 
               style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:20,fontFamily:F}}/>
 
             <SL>⭐ 즐겨찾기 종목</SL>
