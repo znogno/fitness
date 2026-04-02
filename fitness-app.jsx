@@ -168,8 +168,9 @@ export default function App() {
     } catch {}
     return {};
   });
-  const [workoutAddMode, setWorkoutAddMode] = useState(false);
-  const [workoutTitle, setWorkoutTitle]     = useState("");
+  const [workoutAddMode, setWorkoutAddMode]   = useState(false);
+  const [workoutTitle, setWorkoutTitle]       = useState("");
+  const [expandedMonths, setExpandedMonths]   = useState(new Set());
 
   useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
 
@@ -333,6 +334,7 @@ export default function App() {
   const handleStartWorkout = (r) => {
     setWorkoutExercises(normalizeWorkoutExercises(r.exercises));
     setWorkoutSubType(r.subType || "upper");
+    setWorkoutTitle(r.title || "");
     setExCounters({});
     setWorkoutDone(false);
     setWorkoutStarted(true);
@@ -422,6 +424,23 @@ export default function App() {
   const delEditSet  = (ei,si)    => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:e[ei].sets.filter((_,i)=>i!==si)};return{...p,exercises:e};});
   const addEditSet  = (ei)       => setEditRec(p=>{const e=[...p.exercises];e[ei]={...e[ei],sets:[...e[ei].sets,{weight:"",reps:""}]};return{...p,exercises:e};});
   const addEditEx   = ()         => setEditRec(p=>({...p,exercises:[...p.exercises,{name:"",sets:[{weight:"",reps:""}]}]}));
+
+  const shareRec = (r) => {
+    const lines = [`[${r.title}]`, `${fmtDate(r.date)} · ${r.duration}`, ""];
+    (r.exercises||[]).forEach(ex=>{
+      lines.push(ex.name);
+      (ex.sets||[]).forEach((s,i)=>{
+        if(s.weight!==null&&s.weight!=="") lines.push(`  S${i+1}: ${s.weight}kg × ${s.reps}회`);
+        else lines.push(`  S${i+1}: ${s.reps}회${s.note?` (${s.note})`:""}`);
+      });
+    });
+    const text = lines.join("\n");
+    if(navigator.share){
+      navigator.share({title:r.title, text}).catch(()=>{});
+    } else if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(()=>toast2("📋 클립보드에 복사됐어요!")).catch(()=>toast2("공유를 지원하지 않는 환경입니다."));
+    } else { toast2("공유를 지원하지 않는 환경입니다."); }
+  };
 
   const copyRec = (r) => {
     const copied = {...JSON.parse(JSON.stringify(r)), id:Date.now(), date:todayStr()};
@@ -526,7 +545,11 @@ export default function App() {
           <div style={{background:"#141414",borderRadius:26,padding:32,width:"100%",textAlign:"center",animation:"pop 0.4s ease",border:"1px solid #222"}}>
             <div style={{fontSize:64,marginBottom:12}}>🎉</div>
             <div style={{fontSize:26,fontWeight:900,fontFamily:F,marginBottom:6}}>운동 완료!</div>
-            <div style={{fontSize:14,color:"#666",fontFamily:F,marginBottom:24}}>기록이 자동 저장됐어요 💪</div>
+            <div style={{fontSize:14,color:"#666",fontFamily:F,marginBottom:16}}>기록이 자동 저장됐어요 💪</div>
+            <input value={workoutTitle} onChange={e=>{setWorkoutTitle(e.target.value);setRecords(p=>p.map(r=>r.id===lastWorkoutRecId?{...r,title:e.target.value}:r));}}
+              placeholder="운동 제목 입력"
+              style={{width:"100%",background:"#1E1E20",border:"1px solid #333",borderRadius:12,padding:"11px 14px",color:"#fff",fontSize:15,fontWeight:600,marginBottom:16,fontFamily:F,textAlign:"center"}}/>
+
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
               <div style={{background:"#1A1A1C",borderRadius:16,padding:18}}>
                 <div style={{fontSize:26,fontWeight:900,color:org,fontFamily:F}}>{fmtClock(workoutElapsedSecs)}</div>
@@ -549,7 +572,7 @@ export default function App() {
       )}
 
       {/* Header */}
-      <div onClick={()=>{ if(contentRef.current) contentRef.current.scrollTop=0; }} style={{padding:"52px 22px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}}>
+      <div onClick={()=>{ if(document.activeElement) document.activeElement.blur(); if(contentRef.current) contentRef.current.scrollTop=0; }} style={{padding:"52px 22px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}}>
         <div>
           <div style={{fontSize:12,color:sub,fontWeight:600,letterSpacing:0.4,fontFamily:F}}>{new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"})}</div>
           <div style={{fontSize:23,fontWeight:800,marginTop:4,letterSpacing:-0.5,fontFamily:F}}>{pageTitle()}</div>
@@ -785,39 +808,100 @@ export default function App() {
                 <button key={f.id} onClick={()=>setRecFilter(f.id)} style={{padding:"7px 14px",borderRadius:20,border:"none",background:recFilter===f.id?org:"#1E1E20",color:recFilter===f.id?"#fff":"#555",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F,transition:"all 0.2s"}}>{f.label}</button>
               ))}
             </div>
-            {filtered.map(r=>(
-              <div key={r.id}
-                onTouchStart={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
-                onTouchEnd={()=>clearTimeout(pressTimer.current)}
-                onTouchMove={()=>clearTimeout(pressTimer.current)}
-                onMouseDown={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
-                onMouseUp={()=>clearTimeout(pressTimer.current)}
-                onMouseLeave={()=>clearTimeout(pressTimer.current)}
-                style={{transition:"opacity 0.3s",opacity:copiedId===r.id?0.5:1}}
-              >
-              <Crd>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <div style={{width:44,height:44,borderRadius:13,background:r.type==="health"?"rgba(255,107,53,0.15)":"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{getIcon(r.type,r.subType)}</div>
-                    <div>
-                      <div style={{fontSize:15,fontWeight:700,fontFamily:F}}>{r.title}</div>
-                      <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>{fmtDate(r.date)} · {r.duration}</div>
+            {(()=>{
+              const thisMonthRecs = filtered.filter(r=>{
+                if(!r.date) return false;
+                const d=new Date(r.date);
+                return d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth();
+              });
+              const pastRecs = filtered.filter(r=>{
+                if(!r.date) return false;
+                const d=new Date(r.date);
+                return !(d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth());
+              });
+              const monthGroups = {};
+              pastRecs.forEach(r=>{
+                const d=new Date(r.date);
+                const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+                if(!monthGroups[key]) monthGroups[key]=[];
+                monthGroups[key].push(r);
+              });
+              const sortedMonthKeys = Object.keys(monthGroups).sort().reverse();
+              const RecCard = ({r})=>(
+                <div
+                  onTouchStart={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
+                  onTouchEnd={()=>clearTimeout(pressTimer.current)}
+                  onTouchMove={()=>clearTimeout(pressTimer.current)}
+                  onMouseDown={()=>{pressTimer.current=setTimeout(()=>copyRec(r),600);}}
+                  onMouseUp={()=>clearTimeout(pressTimer.current)}
+                  onMouseLeave={()=>clearTimeout(pressTimer.current)}
+                  style={{transition:"opacity 0.3s",opacity:copiedId===r.id?0.5:1}}
+                >
+                <Crd>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{width:44,height:44,borderRadius:13,background:r.type==="health"?"rgba(255,107,53,0.15)":"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{getIcon(r.type,r.subType)}</div>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:700,fontFamily:F}}>{r.title}</div>
+                        <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>{fmtDate(r.date)} · {r.duration}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>shareRec(r)} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"5px 10px",color:"#60A5FA",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F,flexShrink:0}}>공유</button>
+                      <button onClick={()=>{setSelRec(r);setSubView("detail");}} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"5px 10px",color:"#666",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F,flexShrink:0}}>상세</button>
+                      <button onClick={()=>deleteRec(r.id)} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"5px 10px",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F,flexShrink:0}}>삭제</button>
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{setSelRec(r);setSubView("detail");}} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"5px 12px",color:"#666",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F,flexShrink:0}}>상세</button>
-                    <button onClick={()=>deleteRec(r.id)} style={{background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"5px 12px",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F,flexShrink:0}}>삭제</button>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {r.exercises.map(e=><span key={e.name} style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F}}>{e.name}</span>)}
                   </div>
+                  <button onClick={()=>handleStartWorkout(r)} style={{width:"100%",padding:12,background:r.type==="health"?"rgba(255,107,53,0.1)":"rgba(34,197,94,0.1)",border:`1px solid ${r.type==="health"?"rgba(255,107,53,0.25)":"rgba(34,197,94,0.25)"}`,borderRadius:12,color:r.type==="health"?org:grn,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>
+                    오늘 그대로 시작하기 →
+                  </button>
+                </Crd>
                 </div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-                  {r.exercises.map(e=><span key={e.name} style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F}}>{e.name}</span>)}
-                </div>
-                <button onClick={()=>handleStartWorkout(r)} style={{width:"100%",padding:12,background:r.type==="health"?"rgba(255,107,53,0.1)":"rgba(34,197,94,0.1)",border:`1px solid ${r.type==="health"?"rgba(255,107,53,0.25)":"rgba(34,197,94,0.25)"}`,borderRadius:12,color:r.type==="health"?org:grn,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>
-                  오늘 그대로 시작하기 →
-                </button>
-              </Crd>
-              </div>
-            ))}
+              );
+              return (
+                <>
+                  {/* 이번달 기록 */}
+                  <SL>이번달</SL>
+                  {thisMonthRecs.length===0
+                    ? <div style={{background:crd,borderRadius:16,padding:20,textAlign:"center",color:sub,fontSize:13,marginBottom:12,fontFamily:F}}>이번달 운동 기록이 없습니다</div>
+                    : thisMonthRecs.map(r=><RecCard key={r.id} r={r}/>)
+                  }
+                  {/* 이전 월별 폴더 */}
+                  {sortedMonthKeys.length>0&&(
+                    <>
+                      <SL style={{marginTop:8}}>이전 기록</SL>
+                      {sortedMonthKeys.map(mk=>{
+                        const [y,m]=mk.split("-");
+                        const label=`${y}년 ${parseInt(m)}월`;
+                        const isOpen=expandedMonths.has(mk);
+                        const cnt=monthGroups[mk].length;
+                        return(
+                          <div key={mk} style={{marginBottom:10}}>
+                            <button onClick={()=>setExpandedMonths(p=>{const s=new Set(p);isOpen?s.delete(mk):s.add(mk);return s;})}
+                              style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:crd,border:`1px solid ${bdr}`,borderRadius:16,padding:"14px 18px",cursor:"pointer",fontFamily:F}}>
+                              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                                <span style={{fontSize:16}}>📁</span>
+                                <span style={{fontSize:14,fontWeight:700,color:tc}}>{label}</span>
+                                <span style={{fontSize:12,color:sub,background:"#1E1E20",borderRadius:10,padding:"2px 8px"}}>{cnt}개</span>
+                              </div>
+                              <span style={{fontSize:18,color:sub,transition:"transform 0.2s",display:"inline-block",transform:isOpen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
+                            </button>
+                            {isOpen&&(
+                              <div style={{marginTop:6}}>
+                                {monthGroups[mk].map(r=><RecCard key={r.id} r={r}/>)}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -1008,11 +1092,14 @@ export default function App() {
             )}
 
             {!editRec&&(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
-                <button onClick={()=>deleteRec(selRec.id)} style={{padding:15,background:"#1A1A1C",border:"1px solid "+bdr,borderRadius:16,color:"#FF6B35",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>🗑️ 삭제</button>
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:14}}>
                 <button onClick={()=>handleStartWorkout(selRec)} style={{padding:15,background:selRec.type==="health"?"linear-gradient(135deg,"+org+",#FF3A6E)":"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F}}>
                   오늘 이 루틴 그대로 시작하기 🚀
                 </button>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <button onClick={()=>shareRec(selRec)} style={{padding:13,background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:16,color:"#60A5FA",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>📤 공유하기</button>
+                  <button onClick={()=>deleteRec(selRec.id)} style={{padding:13,background:"#1A1A1C",border:"1px solid "+bdr,borderRadius:16,color:"#FF6B35",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>🗑️ 삭제</button>
+                </div>
               </div>
             )}
           </div>
@@ -1157,24 +1244,27 @@ export default function App() {
                     const target = Number(targetRaw) || ex.sets.length;
                     const done = cnt>=target;
                     return (
-                      <div key={ex.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
-                        <div style={{width:"65%"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                            <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
-                              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:done?grn:tc,fontSize:16,fontFamily:F}}/>
-                            <button onClick={()=>removeWorkoutExercise(ex.id)} style={{padding:"6px 10px",background:"none",border:"1px solid #FF6B35",borderRadius:10,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
-                          </div>
-                          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
-                            <span style={{fontSize:11,color:sub,fontFamily:F}}>목표 </span>
+                      <div key={ex.id} style={{padding:"12px 0",borderBottom:i<workoutExercises.length-1?"1px solid "+bdr:"none"}}>
+                        {/* 종목 이름 + 삭제 버튼 */}
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                          <input type="text" value={ex.name} onChange={e=>updateWorkoutExercise(ex.id,"name",e.target.value)} placeholder="운동명 입력"
+                            style={{flex:1,minWidth:0,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:done?grn:tc,fontSize:16,fontFamily:F}}/>
+                          <button onClick={()=>removeWorkoutExercise(ex.id)}
+                            style={{width:32,height:32,flexShrink:0,background:"rgba(255,107,53,0.12)",border:"1px solid rgba(255,107,53,0.35)",borderRadius:9,color:"#FF6B35",fontSize:15,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                        </div>
+                        {/* 목표 세트 + 카운터 */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:11,color:sub,fontFamily:F}}>목표</span>
                             <input type="number" min={1} value={targetRaw} onChange={e=>updateWorkoutExercise(ex.id,"target",e.target.value)} onBlur={e=>{ if (e.target.value.trim()==="") updateWorkoutExercise(ex.id,"target",1); }}
-                              style={{width:60,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"8px 10px",color:done?grn:tc,fontSize:16,fontFamily:F,textAlign:"center"}}/>
+                              style={{width:54,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:11,padding:"7px 8px",color:done?grn:tc,fontSize:16,fontFamily:F,textAlign:"center"}}/>
                             <span style={{fontSize:11,color:sub,fontFamily:F}}>세트</span>
                           </div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>-</button>
-                          <span style={{fontSize:22,fontWeight:900,color:done?grn:org,fontFamily:F,minWidth:28,textAlign:"center"}}>{cnt}</span>
-                          <button onClick={()=>setExCounters(p=>({...p,[ex.id]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <button onClick={()=>setExCounters(p=>({...p,[ex.id]:Math.max(0,cnt-1)}))} style={{width:34,height:34,borderRadius:10,border:"1px solid "+bdr,background:"#1A1A1C",color:"#fff",fontSize:18,fontWeight:300,cursor:"pointer"}}>-</button>
+                            <span style={{fontSize:22,fontWeight:900,color:done?grn:org,fontFamily:F,minWidth:28,textAlign:"center"}}>{cnt}</span>
+                            <button onClick={()=>setExCounters(p=>({...p,[ex.id]:cnt+1}))} style={{width:34,height:34,borderRadius:10,border:"none",background:"linear-gradient(135deg,"+org+",#FF3A6E)",color:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+                          </div>
                         </div>
                       </div>
                     );
