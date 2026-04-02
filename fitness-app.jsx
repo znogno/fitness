@@ -158,8 +158,18 @@ export default function App() {
   const [lightMode, setLightMode]         = useState(false);
   const photoRef   = useRef(null);
   const galleryRef = useRef(null);
+  const contentRef = useRef(null);
 
   const [notifs, setNotifs] = useState({workout:false,rest:false,weekly:false,golf:false});
+  const [statOverrides, setStatOverrides] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("fitness-stat-overrides");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+  const [workoutAddMode, setWorkoutAddMode] = useState(false);
+  const [workoutTitle, setWorkoutTitle]     = useState("");
 
   useEffect(() => { timerSecRef.current = timerSec; }, [timerSec]);
 
@@ -199,6 +209,10 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem("fitness-favs", JSON.stringify(favs));
   }, [favs]);
+
+  useEffect(() => {
+    window.localStorage.setItem("fitness-stat-overrides", JSON.stringify(statOverrides));
+  }, [statOverrides]);
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const notifyRestComplete = () => {
@@ -256,8 +270,12 @@ export default function App() {
     const d = new Date(r.date);
     return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
   });
-  const monthlyCount = thisMonthRecords.length;
-  const totalMinutes = thisMonthRecords.reduce((sum, r) => sum + parseDurationToMinutes(r.duration), 0);
+  const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+  const monthCountOffset = statOverrides.monthCount?.month === currentMonthKey ? (statOverrides.monthCount.offset || 0) : 0;
+  const monthlyCount = Math.max(0, thisMonthRecords.length - monthCountOffset);
+  const baseMonthMinutes = thisMonthRecords.reduce((sum, r) => sum + parseDurationToMinutes(r.duration), 0);
+  const monthTimeOffset = statOverrides.monthTime?.month === currentMonthKey ? (statOverrides.monthTime.offset || 0) : 0;
+  const totalMinutes = Math.max(0, baseMonthMinutes - monthTimeOffset);
   const totalTimeLabel = formatMinutes(totalMinutes);
   const monthActiveDays = new Set(thisMonthRecords.map(r => r.date).filter(Boolean)).size;
   const monthExerciseCount = new Set(thisMonthRecords.flatMap(r => (r.exercises || []).map(ex => ex.name).filter(Boolean))).size;
@@ -267,14 +285,19 @@ export default function App() {
   const upperDateSet   = new Set(records.filter(r=>r.type==="health"&&r.subType==="upper").map(r=>r.date).filter(Boolean));
   const lowerDateSet   = new Set(records.filter(r=>r.type==="health"&&r.subType==="lower").map(r=>r.date).filter(Boolean));
   const getCurrentStreak = () => {
-    if (recordDateSet.size === 0) return 0;
-    const sortedDates = [...recordDateSet].sort();
+    const streakResetDate = statOverrides.streakReset || null;
+    const filteredDates = streakResetDate
+      ? [...recordDateSet].filter(d => d > streakResetDate)
+      : [...recordDateSet];
+    const filteredSet = new Set(filteredDates);
+    if (filteredSet.size === 0) return 0;
+    const sortedDates = [...filteredSet].sort();
     let lastDate = sortedDates[sortedDates.length - 1];
     let streak = 0;
     const toLocalStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     const normalize = (date) => new Date(new Date(date).getFullYear(), new Date(date).getMonth(), new Date(date).getDate());
     let current = normalize(lastDate);
-    while (recordDateSet.has(toLocalStr(current))) {
+    while (filteredSet.has(toLocalStr(current))) {
       streak += 1;
       current = new Date(current.getFullYear(), current.getMonth(), current.getDate() - 1);
     }
@@ -346,7 +369,7 @@ export default function App() {
       id: Date.now(),
       date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,
       type:"health", subType:workoutSubType,
-      title: workoutSubType==="upper"?"상체 루틴":"하체 루틴",
+      title: workoutTitle || (workoutSubType==="upper"?"상체 루틴":"하체 루틴"),
       duration: durStr,
       exercises: workoutExercises.map(ex=>({
         name:ex.name,
@@ -371,6 +394,19 @@ export default function App() {
     setRecords(p=>[{id:Date.now(),date:newRec.date,type:newRec.type,subType:newRec.subType,title:newRec.title,duration:"직접입력",exercises:newRec.exercises.filter(e=>e.name)},...p]);
     setNewRec({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
     go("record"); toast2("💾 기록 저장됐어요!");
+  };
+
+  const saveWorkoutRoutine = () => {
+    const validExs = newRec.exercises.filter(e => e.name);
+    if (!validExs.length) { toast2("⚠️ 운동을 1개 이상 추가해주세요"); return; }
+    setWorkoutTitle(newRec.title);
+    setWorkoutExercises(normalizeWorkoutExercises(validExs));
+    setWorkoutSubType(newRec.subType || "upper");
+    setExCounters({});
+    setWorkoutDone(false);
+    setNewRec({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});
+    setWorkoutAddMode(false);
+    toast2("✅ 루틴 불러왔어요! 운동 시작하기를 눌러주세요");
   };
 
   const startEditRec = () => setEditRec(JSON.parse(JSON.stringify(selRec)));
@@ -451,6 +487,7 @@ export default function App() {
     if(activeTab==="record"&&subView==="add")    return "새 기록 입력";
     if(activeTab==="record"&&subView==="detail") return "기록 상세";
     if(activeTab==="workout"&&workoutDone)       return "운동 완료! 🎉";
+    if(activeTab==="workout"&&workoutAddMode)    return "루틴 작성";
     if(activeTab==="workout")                    return "운동 중 🔥";
     if(activeTab==="golf"&&subView===null)       return "골프";
     if(activeTab==="golf"&&subView==="card")     return "스코어카드";
@@ -512,7 +549,7 @@ export default function App() {
       )}
 
       {/* Header */}
-      <div style={{padding:"52px 22px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+      <div onClick={()=>{ if(contentRef.current) contentRef.current.scrollTop=0; }} style={{padding:"52px 22px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}}>
         <div>
           <div style={{fontSize:12,color:sub,fontWeight:600,letterSpacing:0.4,fontFamily:F}}>{new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"})}</div>
           <div style={{fontSize:23,fontWeight:800,marginTop:4,letterSpacing:-0.5,fontFamily:F}}>{pageTitle()}</div>
@@ -528,7 +565,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{padding:"18px 0 100px",overflowY:"auto",overflowX:"hidden",maxHeight:"calc(100vh - 118px)"}}>
+      <div ref={contentRef} style={{padding:"18px 0 100px",overflowY:"auto",overflowX:"hidden",maxHeight:"calc(100vh - 118px)"}}>
 
         {/* HOME 통계 리셋 모달 */}
         {homeStatModal&&(
@@ -545,58 +582,36 @@ export default function App() {
               </div>
               {homeStatModal==="month"&&(
                 <button onClick={()=>{
-                  const now=new Date();
-                  if(window.confirm("이번달 운동 횟수를 초기화하시겠어요?\n이번달 운동 기록이 모두 삭제됩니다.")) {
-                    setRecords(p=>p.filter(r=>{
-                      if(!r.date) return true;
-                      const d=new Date(r.date);
-                      return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
-                    }));
+                  if(window.confirm("이번달 운동 횟수를 0으로 초기화할까요?\n기록 탭의 데이터는 유지됩니다.")) {
+                    setStatOverrides(p=>({...p, monthCount:{month:currentMonthKey, offset:thisMonthRecords.length}}));
                     toast2("이번달 운동 횟수가 초기화됐어요.");
                     setHomeStatModal(null);
                   }
                 }} style={{width:"100%",padding:15,background:"rgba(255,107,53,0.12)",border:"1px solid rgba(255,107,53,0.3)",borderRadius:14,color:org,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                  🗑️ 이번달 횟수 초기화
+                  🔄 이번달 횟수 초기화
                 </button>
               )}
               {homeStatModal==="time"&&(
                 <button onClick={()=>{
-                  const now=new Date();
-                  if(window.confirm("이번달 운동 시간을 초기화하시겠어요?\n이번달 운동 기록이 모두 삭제됩니다.")) {
-                    setRecords(p=>p.filter(r=>{
-                      if(!r.date) return true;
-                      const d=new Date(r.date);
-                      return !(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
-                    }));
+                  if(window.confirm("이번달 운동 시간을 0으로 초기화할까요?\n기록 탭의 데이터는 유지됩니다.")) {
+                    setStatOverrides(p=>({...p, monthTime:{month:currentMonthKey, offset:baseMonthMinutes}}));
                     toast2("이번달 운동 시간이 초기화됐어요.");
                     setHomeStatModal(null);
                   }
                 }} style={{width:"100%",padding:15,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:14,color:grn,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                  🗑️ 이번달 총 시간 초기화
+                  🔄 이번달 총 시간 초기화
                 </button>
               )}
               {homeStatModal==="streak"&&(
-                <>
-                  <button onClick={()=>{
-                    if(window.confirm("오늘 운동 기록을 삭제하시겠어요?\n연속 기록이 끊어집니다.")) {
-                      const todayS=todayStr();
-                      setRecords(p=>p.filter(r=>r.date!==todayS));
-                      toast2("오늘 운동 기록이 삭제됐어요.");
-                      setHomeStatModal(null);
-                    }
-                  }} style={{width:"100%",padding:15,background:"rgba(96,165,250,0.12)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:14,color:"#60A5FA",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                    🗑️ 오늘 기록 삭제 (연속 끊기)
-                  </button>
-                  <button onClick={()=>{
-                    if(window.confirm("연속 기록을 완전히 초기화하시겠어요?\n전체 운동 기록이 삭제됩니다.")) {
-                      setRecords([]);
-                      toast2("연속 기록이 초기화됐어요.");
-                      setHomeStatModal(null);
-                    }
-                  }} style={{width:"100%",padding:15,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:14,color:"#ef4444",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
-                    ⚠️ 연속 기록 전체 초기화
-                  </button>
-                </>
+                <button onClick={()=>{
+                  if(window.confirm("연속 기록을 0으로 초기화할까요?\n기록 탭의 데이터는 유지됩니다.")) {
+                    setStatOverrides(p=>({...p, streakReset:todayStr()}));
+                    toast2("연속 기록이 초기화됐어요.");
+                    setHomeStatModal(null);
+                  }
+                }} style={{width:"100%",padding:15,background:"rgba(96,165,250,0.12)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:14,color:"#60A5FA",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>
+                  🔄 연속 기록 초기화
+                </button>
               )}
               <button onClick={()=>setHomeStatModal(null)} style={{width:"100%",padding:15,background:"#1E1E20",border:"none",borderRadius:14,color:"#888",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>
                 취소
@@ -1003,8 +1018,68 @@ export default function App() {
           </div>
         )}
 
+        {/* WORKOUT — 루틴 작성 모드 */}
+        {activeTab==="workout"&&!workoutDone&&workoutAddMode&&(
+          <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
+            <button onClick={()=>{setWorkoutAddMode(false);setNewRec({type:"health",subType:"upper",title:"",date:todayStr(),exercises:[{name:"",sets:[{weight:"",reps:""}]}]});}} style={{background:"none",border:"none",color:org,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
+
+            <SL>운동 종류</SL>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+              {[{id:"upper",type:"health",icon:"🦁",label:"상체",color:org},{id:"lower",type:"health",icon:"🐘",label:"하체",color:pur}].map(t=>{
+                const active = newRec.subType===t.id;
+                return (
+                  <button key={t.id} onClick={()=>setNewRec(p=>({...p,type:"health",subType:t.id}))} style={{padding:"12px 6px",background:active?"rgba(255,107,53,0.15)":"#1A1A1C",border:`1px solid ${active?t.color:"#2a2a2a"}`,borderRadius:14,color:active?t.color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>
+                    {t.icon} {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <SL>루틴 이름</SL>
+            <input value={newRec.title} onChange={e=>setNewRec(p=>({...p,title:e.target.value}))} placeholder="예: 오늘 상체 루틴"
+              style={{width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:13,padding:"13px 16px",color:"#fff",fontSize:16,fontWeight:600,marginBottom:20,fontFamily:F}}/>
+
+            <SL>⭐ 즐겨찾기 종목</SL>
+            <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:20}}>
+              {favs.map(name=>(
+                <button key={name} onClick={()=>addFav(name)} style={{padding:"7px 12px",background:"rgba(255,107,53,0.1)",border:"1px solid rgba(255,107,53,0.25)",borderRadius:20,color:org,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F}}>+ {name}</button>
+              ))}
+            </div>
+
+            <SL>운동 목록</SL>
+            {newRec.exercises.map((ex,ei)=>(
+              <Crd key={ei} style={{padding:"14px"}}>
+                <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+                  <input value={ex.name} onChange={e=>upName(ei,e.target.value)} placeholder="운동 이름"
+                    style={{flex:1,minWidth:0,background:"#1E1E20",border:"none",borderRadius:10,padding:"10px 12px",color:org,fontSize:16,fontWeight:700,fontFamily:F}}/>
+                  <button onClick={()=>ex.name&&togFav(ex.name)} title={favs.includes(ex.name)&&ex.name?"즐겨찾기 해제":"즐겨찾기 추가"}
+                    style={{background:favs.includes(ex.name)&&ex.name?"rgba(251,191,36,0.18)":"none",border:favs.includes(ex.name)&&ex.name?"1px solid rgba(251,191,36,0.45)":"1px solid transparent",borderRadius:9,fontSize:18,cursor:ex.name?"pointer":"default",flexShrink:0,padding:"4px 7px",transition:"all 0.2s"}}>
+                    {favs.includes(ex.name)&&ex.name?"⭐":"☆"}
+                  </button>
+                  <button onClick={()=>delEx(ei)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:13,cursor:"pointer",flexShrink:0,padding:"4px 8px",color:"#c0392b"}}>✕</button>
+                </div>
+                {ex.sets.map((set,si)=>(
+                  <div key={si} style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                    <span style={{fontSize:11,color:"#444",fontWeight:700,fontFamily:F,flexShrink:0,width:24}}>S{si+1}</span>
+                    <input value={set.weight} onChange={e=>upSet(ei,si,"weight",e.target.value)} placeholder="kg" type="number"
+                      style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                    <span style={{color:"#333",fontSize:11,flexShrink:0}}>×</span>
+                    <input value={set.reps} onChange={e=>upSet(ei,si,"reps",e.target.value)} placeholder="횟수" type="number"
+                      style={{flex:1,minWidth:0,background:"#1E1E20",border:`1px solid #2a2a2a`,borderRadius:9,padding:"9px 4px",color:"#fff",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:F}}/>
+                    <span style={{color:"#444",fontSize:11,flexShrink:0,fontFamily:F}}>회</span>
+                    <button onClick={()=>delSet(ei,si)} style={{background:"none",border:"1px solid #3a1a1a",borderRadius:8,fontSize:11,cursor:"pointer",flexShrink:0,padding:"4px 6px",color:"#c0392b"}}>✕</button>
+                  </div>
+                ))}
+                <button onClick={()=>addSet(ei)} style={{background:"none",border:`1px dashed #2a2a2a`,borderRadius:9,padding:"8px",color:"#555",fontSize:12,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:F}}>+ 세트 추가</button>
+              </Crd>
+            ))}
+            <button onClick={addEx} style={{width:"100%",padding:13,background:"#141414",border:`1px dashed #2a2a2a`,borderRadius:14,color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:20,fontFamily:F}}>+ 운동 추가</button>
+            <button onClick={saveWorkoutRoutine} style={{width:"100%",padding:16,background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 24px rgba(255,107,53,0.3)",fontFamily:F}}>▶ 루틴 완성 & 운동 시작 준비</button>
+          </div>
+        )}
+
         {/* WORKOUT */}
-        {activeTab==="workout"&&!workoutDone&&(
+        {activeTab==="workout"&&!workoutDone&&!workoutAddMode&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
             {/* 운동 시계 */}
             <Crd style={{textAlign:"center",padding:"20px 18px"}}>
@@ -1022,6 +1097,7 @@ export default function App() {
               {!workoutStarted ? (
                 <>
                   <div style={{fontSize:13,color:sub,marginBottom:16,fontFamily:F}}>운동 준비 완료!</div>
+                  <button onClick={()=>setWorkoutAddMode(true)} style={{width:"100%",padding:12,background:"#1A1A1C",border:`1px dashed ${bdr}`,borderRadius:14,color:"#888",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F,marginBottom:10}}>✏️ 새 루틴 직접 작성하기</button>
                   <button onClick={startWorkout}
                     style={{width:"100%",padding:16,background:workoutSubType==="lower"?`linear-gradient(135deg,${pur},#7C3AED)`:`linear-gradient(135deg,${org},#FF3A6E)`,
                       border:"none",borderRadius:16,color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,
@@ -1067,8 +1143,9 @@ export default function App() {
             {workoutExercises.length===0 ? (
               <Crd style={{textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:800,fontFamily:F,marginBottom:10}}>운동 루틴이 없습니다.</div>
-                <div style={{fontSize:13,color:sub,lineHeight:1.6,marginBottom:20,fontFamily:F}}>먼저 기록 탭에서 루틴을 선택하거나 새 운동 기록을 추가해주세요.</div>
-                <button onClick={()=>go("record")} style={{padding:14,width:"100%",background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F}}>기록 탭으로 이동</button>
+                <div style={{fontSize:13,color:sub,lineHeight:1.6,marginBottom:16,fontFamily:F}}>직접 루틴을 작성하거나 기록 탭에서 불러오세요.</div>
+                <button onClick={()=>setWorkoutAddMode(true)} style={{padding:14,width:"100%",background:`linear-gradient(135deg,${org},#FF3A6E)`,border:"none",borderRadius:16,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:10,fontFamily:F}}>✏️ 루틴 직접 작성하기</button>
+                <button onClick={()=>go("record")} style={{padding:14,width:"100%",background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:16,color:"#888",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>기록 탭에서 불러오기</button>
               </Crd>
             ) : (
               <div>

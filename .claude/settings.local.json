@@ -3,7 +3,8 @@
     "allow": [
       "Read(//c/Users/znogn/fitness/app/**)",
       "Bash(ls \"C:\\\\Users\\\\znogn\\\\fitness\\\\app\\\\\\(tabs\\)\")",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }
