@@ -1237,7 +1237,11 @@ export default function App() {
             ) : (
               <div>
                 <Crd>
-                  <SL>종목별 세트 카운터</SL>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <SL style={{margin:0}}>종목별 세트 카운터</SL>
+                    <button onClick={()=>{if(window.confirm("종목 목록을 전체 삭제할까요?")){{setWorkoutExercises([]);setExCounters({});}}}
+                    } style={{padding:"5px 12px",background:"rgba(255,107,53,0.1)",border:"1px solid rgba(255,107,53,0.3)",borderRadius:9,color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>전체 삭제</button>
+                  </div>
                   {workoutExercises.map((ex,i)=>{
                     const cnt = exCounters[ex.id]||0;
                     const targetRaw = ex.target !== undefined ? ex.target : ex.sets.length;
