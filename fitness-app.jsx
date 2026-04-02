@@ -1198,7 +1198,7 @@ export default function App() {
                   <div style={{fontSize:52,fontWeight:900,color:workoutSubType==="lower"?pur:org,letterSpacing:-2,fontFamily:F,lineHeight:1}}>{fmtClock(workoutElapsedSecs)}</div>
                   <div style={{fontSize:12,color:"#444",marginTop:6,marginBottom:14,fontFamily:F}}>{workoutSubType==="lower"?"🐘 하체 운동 중":"🦁 상체 운동 중"}</div>
                   <button onClick={finishWorkout} style={{width:"100%",padding:13,background:"linear-gradient(135deg,#1A6B3C,#22C55E)",border:"none",borderRadius:14,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:"0 6px 18px rgba(34,197,94,0.25)"}}>
-                    ■ 운동 정지 & 저장
+                    ■ 운동 종료 & 저장
                   </button>
                 </>
               )}
