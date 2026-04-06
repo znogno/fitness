@@ -480,7 +480,7 @@ export default function App() {
   const scoreColor  = (sc,par) => { if(!sc) return tc; const d=parseInt(sc)-par; return d<0?grn:d===0?"#60A5FA":org; };
   const getIcon     = (type,sub) => type==="golf"?"⛳":sub==="lower"?"🐘":"🦁";
 
-  const isLight = lightMode && (activeTab==="golf" || activeTab==="home");
+  const isLight = lightMode;
   const bg  = isLight?"#F0F4EE":"#0A0A0A";
   const tc  = isLight?"#1A1A1A":"#F5F5F7";
   const crd = isLight?"#FFFFFF":"#141414";
