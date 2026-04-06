@@ -1219,13 +1219,13 @@ export default function App() {
               <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
                 <div style={{position:"relative",width:120,height:120}}>
                   <svg width="120" height="120" style={{transform:"rotate(-90deg)"}}>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="#1E1E20" strokeWidth="7"/>
+                    <circle cx="60" cy="60" r="52" fill="none" stroke={isLight?"#DDE8D8":"#1E1E20"} strokeWidth="7"/>
                     <circle cx="60" cy="60" r="52" fill="none" stroke={timerOn?org:"#333"} strokeWidth="7"
                       strokeDasharray={`${(2*Math.PI*52)*(pct/100)} ${2*Math.PI*52}`}
                       strokeDashoffset={-(2*Math.PI*52)*(1-pct/100)}
                       strokeLinecap="round" style={{transition:"stroke-dasharray 0.8s ease,stroke-dashoffset 0.8s ease,stroke 0.3s"}}/>
                   </svg>
-                  <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:"#fff",letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
+                  <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:26,fontWeight:800,color:timerOn?org:tc,letterSpacing:-1,fontFamily:F}}>{fmt(timerDisp)}</div>
                 </div>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
