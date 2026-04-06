@@ -480,7 +480,7 @@ export default function App() {
   const scoreColor  = (sc,par) => { if(!sc) return tc; const d=parseInt(sc)-par; return d<0?grn:d===0?"#60A5FA":org; };
   const getIcon     = (type,sub) => type==="golf"?"⛳":sub==="lower"?"🐘":"🦁";
 
-  const isLight = lightMode && activeTab==="golf";
+  const isLight = lightMode && (activeTab==="golf" || activeTab==="home");
   const bg  = isLight?"#F0F4EE":"#0A0A0A";
   const tc  = isLight?"#1A1A1A":"#F5F5F7";
   const crd = isLight?"#FFFFFF":"#141414";
@@ -578,7 +578,7 @@ export default function App() {
           <div style={{fontSize:23,fontWeight:800,marginTop:4,letterSpacing:-0.5,fontFamily:F}}>{pageTitle()}</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {activeTab==="golf"&&(
+          {(activeTab==="golf"||activeTab==="home")&&(
             <button onClick={()=>setLightMode(p=>!p)} style={{width:36,height:36,borderRadius:"50%",background:lightMode?"#FBBF24":"#1E1E20",border:"none",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {lightMode?"🌙":"☀️"}
             </button>
@@ -731,39 +731,50 @@ export default function App() {
               {(()=>{
                 const firstDay = new Date(calendarYear,calendarMonth,1).getDay();
                 const daysInMonth = new Date(calendarYear,calendarMonth+1,0).getDate();
+                const prevMonthDays = new Date(calendarYear,calendarMonth,0).getDate();
                 const cells=[];
-                for(let i=0;i<firstDay;i++) cells.push(null);
-                for(let d=1;d<=daysInMonth;d++) cells.push(d);
-                while(cells.length%7!==0) cells.push(null);
+                for(let i=0;i<firstDay;i++) cells.push({day:prevMonthDays-firstDay+1+i,offset:-1});
+                for(let d=1;d<=daysInMonth;d++) cells.push({day:d,offset:0});
+                let nextDay=1;
+                while(cells.length%7!==0) cells.push({day:nextDay++,offset:1});
                 const todayObj=new Date();
                 const tD=todayObj.getDate(),tM=todayObj.getMonth(),tY=todayObj.getFullYear();
+                const goMonth=(dir)=>{
+                  if(dir===-1){if(calendarMonth===0){setCalendarMonth(11);setCalendarYear(y=>y-1);}else setCalendarMonth(m=>m-1);}
+                  else{if(calendarMonth===11){setCalendarMonth(0);setCalendarYear(y=>y+1);}else setCalendarMonth(m=>m+1);}
+                  setSelectedCalDate(null);
+                };
                 return(
                   <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
-                    {cells.map((d,i)=>{
-                      if(!d) return <div key={i}/>;
-                      const ds=`${calendarYear}-${String(calendarMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-                      const hasU=upperDateSet.has(ds);
-                      const hasL=lowerDateSet.has(ds);
-                      const hasG=golfDateSet.has(ds);
+                    {cells.map(({day:d,offset},i)=>{
+                      const isAdj=offset!==0;
+                      const adjMonth=calendarMonth+offset;
+                      const adjYear=adjMonth<0?calendarYear-1:adjMonth>11?calendarYear+1:calendarYear;
+                      const adjM=((adjMonth%12)+12)%12;
+                      const ds=`${adjYear}-${String(adjM+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+                      const hasU=!isAdj&&upperDateSet.has(ds);
+                      const hasL=!isAdj&&lowerDateSet.has(ds);
+                      const hasG=!isAdj&&golfDateSet.has(ds);
                       const hasW=hasU||hasL||hasG;
-                      const isToday=d===tD&&calendarMonth===tM&&calendarYear===tY;
-                      const isSel=selectedCalDate===ds;
-                      const dow=(firstDay+d-1)%7;
+                      const isToday=!isAdj&&d===tD&&calendarMonth===tM&&calendarYear===tY;
+                      const isSel=!isAdj&&selectedCalDate===ds;
+                      const dow=i%7;
                       const selColor=!hasW?org:hasL&&!hasU&&!hasG?pur:hasG&&!hasU&&!hasL?grn:org;
-                      const bgColor=isSel
+                      const bgColor=isAdj?"transparent":isSel
                         ? !hasW?"rgba(255,107,53,0.18)":hasL&&!hasU&&!hasG?"rgba(168,85,247,0.3)":hasG&&!hasU&&!hasL?"rgba(34,197,94,0.28)":"rgba(255,107,53,0.28)"
                         : hasL&&!hasU?"rgba(168,85,247,0.15)"
                         : hasU&&hasL?"rgba(255,107,53,0.12)"
                         : hasU?"rgba(255,107,53,0.15)"
                         : hasG?"rgba(34,197,94,0.13)"
                         : isToday?"rgba(96,165,250,0.13)":"transparent";
-                      const txtColor=isSel?selColor:hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
+                      const adjTxtColor=dow===0?"rgba(239,68,68,0.35)":dow===6?"rgba(96,165,250,0.35)":"rgba(128,128,128,0.35)";
+                      const txtColor=isAdj?adjTxtColor:isSel?selColor:hasL&&!hasU?pur:hasU?org:hasG?grn:isToday?"#60A5FA":dow===0?"#ef4444":dow===6?"#60A5FA":tc;
                       return(
-                        <div key={i} onClick={()=>setSelectedCalDate(isSel?null:ds)}
+                        <div key={i} onClick={()=>isAdj?goMonth(offset):setSelectedCalDate(isSel?null:ds)}
                           style={{textAlign:"center",padding:"5px 2px",borderRadius:8,
                             background:bgColor,
                             border:isSel?`1px solid ${selColor}`:isToday?`1px solid rgba(96,165,250,0.35)`:"1px solid transparent",
-                            cursor:"pointer"}}>
+                            cursor:"pointer",opacity:isAdj?0.6:1}}>
                           <div style={{fontSize:12,fontWeight:hasW||isToday?700:400,color:txtColor,fontFamily:F}}>{d}</div>
                           <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:1,minHeight:5}}>
                             {hasU&&<div style={{width:4,height:4,borderRadius:"50%",background:org}}/>}
