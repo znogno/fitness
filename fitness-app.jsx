@@ -138,7 +138,6 @@ export default function App() {
   const [course, setCourse]               = useState("");
   const [golfPars, setGolfPars]           = useState(Array(18).fill(4));
   const [scores, setScores]               = useState(mkScores());
-  const [golfPhoto, setGolfPhoto]         = useState(null);
   const [golfNote, setGolfNote]           = useState("");
   const [golfDate, setGolfDate]           = useState(todayStr());
   const [golfRounds, setGolfRounds]       = useState(() => {
@@ -156,15 +155,9 @@ export default function App() {
     }
   });
   const [lightMode, setLightMode]         = useState(false);
-  const photoRef   = useRef(null);
-  const galleryRef = useRef(null);
   const contentRef = useRef(null);
 
   const [notifs, setNotifs] = useState({workout:false,rest:false,weekly:false,golf:false});
-  const [anthropicApiKey, setAnthropicApiKey] = useState(() => {
-    try { return window.localStorage.getItem("fitness-anthropic-key") || ""; } catch { return ""; }
-  });
-  const [ocrLoading, setOcrLoading] = useState(false);
   const [statOverrides, setStatOverrides] = useState(() => {
     try {
       const raw = window.localStorage.getItem("fitness-stat-overrides");
@@ -218,10 +211,6 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem("fitness-stat-overrides", JSON.stringify(statOverrides));
   }, [statOverrides]);
-
-  useEffect(() => {
-    window.localStorage.setItem("fitness-anthropic-key", anthropicApiKey);
-  }, [anthropicApiKey]);
 
   const toast2 = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const notifyRestComplete = () => {
@@ -488,81 +477,15 @@ export default function App() {
       pars: [...golfPars],
       scores: scores.map(s => ({...s})),
       note: golfNote,
-      photo: golfPhoto,
     };
     setGolfRounds(p => [newRound, ...p]);
     setCourse("");
     setScores(mkScores());
     setGolfNote("");
-    setGolfPhoto(null);
     setGolfDate(todayStr());
     setGolfPars(Array(18).fill(4));
     toast2("⛳ 스코어카드 저장됐어요!");
     setSubView(null);
-  };
-
-  const analyzeScorecard = async () => {
-    if (!anthropicApiKey) { toast2("⚠️ 설정에서 Claude API 키를 입력해주세요"); return; }
-    if (!golfPhoto) return;
-    setOcrLoading(true);
-    try {
-      const base64 = golfPhoto.split(",")[1];
-      const mediaType = golfPhoto.split(";")[0].split(":")[1];
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": anthropicApiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1024,
-          messages: [{
-            role: "user",
-            content: [{
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: base64 }
-            }, {
-              type: "text",
-              text: "이 골프 스코어카드 이미지에서 정보를 추출해주세요. JSON 형식으로만 응답해주세요:\n{\"date\":\"YYYY-MM-DD\",\"course\":\"골프장이름\",\"holes\":[1홀~18홀타수배열],\"putts\":[1홀~18홀퍼트배열],\"pars\":[1홀~18홀파배열]}\n날짜나 코스명이 없으면 null, 홀 타수가 없으면 해당 배열 요소를 null로 해주세요."
-            }]
-          }]
-        })
-      });
-      const data = await response.json();
-      if (data.error) { toast2("⚠️ API 오류: " + (data.error.message||"알 수 없는 오류")); return; }
-      const text = data.content?.[0]?.text || "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.date) setGolfDate(parsed.date);
-        if (parsed.course) setCourse(parsed.course);
-        if (Array.isArray(parsed.holes)) {
-          setScores(prev => prev.map((h, i) => ({
-            ...h,
-            score: (parsed.holes[i] !== null && parsed.holes[i] !== undefined) ? String(parsed.holes[i]) : h.score
-          })));
-        }
-        if (Array.isArray(parsed.putts)) {
-          setScores(prev => prev.map((h, i) => ({
-            ...h,
-            putts: (parsed.putts[i] !== null && parsed.putts[i] !== undefined) ? String(parsed.putts[i]) : h.putts
-          })));
-        }
-        if (Array.isArray(parsed.pars)) {
-          setGolfPars(parsed.pars.map(p => parseInt(p) || 4));
-        }
-        toast2("✅ 스코어카드 분석 완료!");
-      } else {
-        toast2("⚠️ 스코어카드를 인식하지 못했습니다");
-      }
-    } catch {
-      toast2("⚠️ 분석 중 오류가 발생했습니다");
-    } finally {
-      setOcrLoading(false);
-    }
   };
 
   const golfRoundCount = golfRounds.length;
@@ -573,7 +496,6 @@ export default function App() {
   const totalPar   = golfPars.reduce((a,b)=>a+b,0);
   const totalPutts = scores.reduce((s,h)=>s+(parseInt(h.putts)||0),0);
   const diff       = totalScore - totalPar;
-  const handlePhoto = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>setGolfPhoto(ev.target.result); r.readAsDataURL(f); };
   const upScore     = (i,f,v) => setScores(p=>{const s=[...p];s[i]={...s[i],[f]:v};return s;});
   const upPar       = (i,v)   => setGolfPars(p=>{const ps=[...p];ps[i]=parseInt(v);return ps;});
   const scoreColor  = (sc,par) => { if(!sc) return tc; const d=parseInt(sc)-par; return d<0?grn:d===0?"#60A5FA":org; };
@@ -930,17 +852,26 @@ export default function App() {
               ))}
             </div>
             {/* 골프 라운드 기록 */}
-            {(recFilter==="all"||recFilter==="golf")&&golfRounds.length>0&&(()=>{
-              const thisMonthGolf = golfRounds.filter(r=>{
+            {(recFilter==="all"||recFilter==="golf")&&(()=>{
+              const sortedGolf = [...golfRounds].sort((a,b)=>b.date>a.date?1:-1);
+              const thisMonthGolf = sortedGolf.filter(r=>{
                 if(!r.date) return false;
                 const d=new Date(r.date);
                 return d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth();
               });
-              const pastGolf = golfRounds.filter(r=>{
+              const pastGolf = sortedGolf.filter(r=>{
                 if(!r.date) return false;
                 const d=new Date(r.date);
                 return !(d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth());
               });
+              const golfMonthGroups = {};
+              pastGolf.forEach(r=>{
+                const d=new Date(r.date);
+                const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+                if(!golfMonthGroups[key]) golfMonthGroups[key]=[];
+                golfMonthGroups[key].push(r);
+              });
+              const sortedGolfMonthKeys = Object.keys(golfMonthGroups).sort().reverse();
               const GolfCard = ({r})=>(
                 <div style={{background:crd,borderRadius:18,padding:18,border:`1px solid rgba(34,197,94,0.2)`,marginBottom:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
@@ -959,11 +890,45 @@ export default function App() {
                       <button onClick={()=>deleteGolfRound(r.id)} style={{background:"none",border:"1px solid #FF6B35",borderRadius:9,padding:"5px 10px",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:12}}>
+                  {/* 홀별 스코어 요약 */}
+                  {Array.isArray(r.scores)&&r.scores.some(h=>h.score)&&(
+                    <div style={{marginBottom:10}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:3}}>
+                        {r.scores.slice(0,9).map((h,k)=>(
+                          <div key={k} style={{textAlign:"center",fontSize:9,color:sub,fontFamily:F}}>{k+1}H</div>
+                        ))}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:4}}>
+                        {r.scores.slice(0,9).map((h,k)=>{
+                          const par=Array.isArray(r.pars)?r.pars[k]:4;
+                          const sc=parseInt(h.score);
+                          const color=!h.score?sub:sc-par<0?grn:sc-par===0?"#60A5FA":org;
+                          return <div key={k} style={{textAlign:"center",fontSize:13,fontWeight:800,color,fontFamily:F}}>{h.score||"·"}</div>;
+                        })}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:3}}>
+                        {r.scores.slice(9,18).map((h,k)=>(
+                          <div key={k} style={{textAlign:"center",fontSize:9,color:sub,fontFamily:F}}>{k+10}H</div>
+                        ))}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2}}>
+                        {r.scores.slice(9,18).map((h,k)=>{
+                          const par=Array.isArray(r.pars)?r.pars[k+9]:4;
+                          const sc=parseInt(h.score);
+                          const color=!h.score?sub:sc-par<0?grn:sc-par===0?"#60A5FA":org;
+                          return <div key={k} style={{textAlign:"center",fontSize:13,fontWeight:800,color,fontFamily:F}}>{h.score||"·"}</div>;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {r.putts>0&&<span style={{background:"rgba(96,165,250,0.1)",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#60A5FA",fontWeight:600,fontFamily:F}}>퍼트 {r.putts}</span>}
-                    {r.note&&<span style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{r.note}</span>}
+                    {r.note&&<span style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}}>{r.note}</span>}
                   </div>
                 </div>
+              );
+              if(sortedGolf.length===0&&recFilter==="golf") return(
+                <div style={{background:crd,borderRadius:16,padding:20,textAlign:"center",color:sub,fontSize:13,marginBottom:12,fontFamily:F}}>저장된 골프 라운드가 없습니다</div>
               );
               return (
                 <>
@@ -973,10 +938,33 @@ export default function App() {
                       {thisMonthGolf.map(r=><GolfCard key={r.id} r={r}/>)}
                     </>
                   )}
-                  {pastGolf.length>0&&recFilter==="golf"&&(
+                  {sortedGolfMonthKeys.length>0&&(
                     <>
-                      <SL>이전 골프 라운드</SL>
-                      {pastGolf.map(r=><GolfCard key={r.id} r={r}/>)}
+                      {recFilter==="golf"&&<SL style={{marginTop:8}}>이전 라운드</SL>}
+                      {sortedGolfMonthKeys.map(mk=>{
+                        const [y,m]=mk.split("-");
+                        const label=`${y}년 ${parseInt(m)}월 골프`;
+                        const isOpen=expandedMonths.has("golf-"+mk);
+                        const cnt=golfMonthGroups[mk].length;
+                        return(
+                          <div key={mk} style={{marginBottom:10}}>
+                            <button onClick={()=>setExpandedMonths(p=>{const s=new Set(p);isOpen?s.delete("golf-"+mk):s.add("golf-"+mk);return s;})}
+                              style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:crd,border:`1px solid rgba(34,197,94,0.2)`,borderRadius:16,padding:"14px 18px",cursor:"pointer",fontFamily:F}}>
+                              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                                <span style={{fontSize:16}}>⛳</span>
+                                <span style={{fontSize:14,fontWeight:700,color:tc}}>{label}</span>
+                                <span style={{fontSize:12,color:grn,background:"rgba(34,197,94,0.1)",borderRadius:10,padding:"2px 8px"}}>{cnt}라운드</span>
+                              </div>
+                              <span style={{fontSize:18,color:sub,transition:"transform 0.2s",display:"inline-block",transform:isOpen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
+                            </button>
+                            {isOpen&&(
+                              <div style={{marginTop:6}}>
+                                {golfMonthGroups[mk].map(r=><GolfCard key={r.id} r={r}/>)}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </>
                   )}
                 </>
@@ -1516,28 +1504,6 @@ export default function App() {
               </div>
             </Crd>
 
-            <Crd style={{border:`1px solid rgba(34,197,94,0.15)`}}>
-              <SL>스코어카드 사진</SL>
-              <input type="file" accept="image/*" capture="environment" ref={photoRef} onChange={handlePhoto} style={{display:"none"}}/>
-              <input type="file" accept="image/*" ref={galleryRef} onChange={handlePhoto} style={{display:"none"}}/>
-              {golfPhoto?(
-                <div>
-                  <div style={{position:"relative",marginBottom:10}}>
-                    <img src={golfPhoto} alt="scorecard" style={{width:"100%",borderRadius:12,maxHeight:180,objectFit:"cover"}}/>
-                    <button onClick={()=>setGolfPhoto(null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.65)",border:"none",borderRadius:"50%",width:28,height:28,color:"#fff",fontSize:14,cursor:"pointer"}}>✕</button>
-                  </div>
-                  <button onClick={analyzeScorecard} disabled={ocrLoading} style={{width:"100%",padding:"12px 0",background:ocrLoading?"#1a3a2a":"rgba(34,197,94,0.12)",border:`1px solid rgba(34,197,94,0.4)`,borderRadius:12,color:ocrLoading?"#555":grn,fontSize:14,fontWeight:700,cursor:ocrLoading?"not-allowed":"pointer",fontFamily:F,transition:"all 0.2s"}}>
-                    {ocrLoading?"🔍 AI 분석 중...":"🤖 AI로 스코어 자동 인식"}
-                  </button>
-                </div>
-              ):(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <button onClick={()=>photoRef.current?.click()} style={{padding:"16px 10px",background:"rgba(34,197,94,0.07)",border:`1px dashed rgba(34,197,94,0.3)`,borderRadius:13,color:grn,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F,lineHeight:1.7}}>📷<br/><span style={{fontSize:11,opacity:0.8}}>카메라로 찍기</span></button>
-                  <button onClick={()=>galleryRef.current?.click()} style={{padding:"16px 10px",background:"rgba(34,197,94,0.07)",border:`1px dashed rgba(34,197,94,0.3)`,borderRadius:13,color:grn,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F,lineHeight:1.7}}>🖼️<br/><span style={{fontSize:11,opacity:0.8}}>갤러리에서 선택</span></button>
-                </div>
-              )}
-            </Crd>
-
             <Crd>
               <SL>홀별 스코어</SL>
               {[{label:"전반",color:grn,from:0,to:9},{label:"후반",color:"#FBBF24",from:9,to:18}].map(({label,color,from,to})=>{
@@ -1656,20 +1622,6 @@ export default function App() {
                   <Tog on={notifs[n.id]} cb={()=>setNotifs(p=>({...p,[n.id]:!p[n.id]}))}/>
                 </div>
               ))}
-            </Crd>
-            <SL>AI 스코어카드 인식</SL>
-            <Crd>
-              <div style={{fontSize:13,color:sub,marginBottom:10,fontFamily:F}}>골프 스코어카드 사진을 AI로 자동 인식하려면 Claude API 키가 필요합니다.</div>
-              <input
-                type="password"
-                value={anthropicApiKey}
-                onChange={e=>setAnthropicApiKey(e.target.value)}
-                placeholder="sk-ant-api03-..."
-                style={{width:"100%",background:"#1A1A1C",border:`1px solid ${anthropicApiKey?"rgba(34,197,94,0.4)":bdr}`,borderRadius:12,padding:"12px 14px",color:"#fff",fontSize:13,fontFamily:F,outline:"none"}}
-              />
-              <div style={{fontSize:11,color:"#444",marginTop:8,fontFamily:F}}>
-                🔒 키는 이 기기에만 저장됩니다 · <span style={{color:grn}}>{anthropicApiKey?"✓ 입력됨":"미입력"}</span>
-              </div>
             </Crd>
             <div style={{textAlign:"center",color:"#2a2a2a",fontSize:11,marginTop:8,fontFamily:F}}>Jinho Fit v4.1 · Made by Jinho ❤️</div>
           </div>
