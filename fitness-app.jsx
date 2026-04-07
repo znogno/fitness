@@ -100,6 +100,8 @@ export default function App() {
   });
   const [selRec, setSelRec]       = useState(null);
   const [editRec, setEditRec]     = useState(null);
+  const [selGolfRound, setSelGolfRound]   = useState(null);
+  const [editingGolfId, setEditingGolfId] = useState(null);
   const [copiedId, setCopiedId]   = useState(null);
   const [toast, setToast]         = useState(null);
   const [recFilter, setRecFilter] = useState("all");
@@ -467,8 +469,7 @@ export default function App() {
     if (!course) { toast2("⚠️ 골프장 이름을 입력해주세요"); return; }
     if (!totalScore) { toast2("⚠️ 홀별 스코어를 입력해주세요"); return; }
     const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-    const newRound = {
-      id: Date.now(),
+    const roundData = {
       date: golfDate,
       course,
       score: totalScore,
@@ -478,14 +479,52 @@ export default function App() {
       scores: scores.map(s => ({...s})),
       note: golfNote,
     };
-    setGolfRounds(p => [newRound, ...p]);
+    if (editingGolfId) {
+      setGolfRounds(p => p.map(r => r.id === editingGolfId ? {...roundData, id: editingGolfId} : r));
+      setEditingGolfId(null);
+      toast2("✅ 라운드가 수정되었습니다!");
+    } else {
+      setGolfRounds(p => [{...roundData, id: Date.now()}, ...p]);
+      toast2("⛳ 스코어카드 저장됐어요!");
+    }
     setCourse("");
     setScores(mkScores());
     setGolfNote("");
     setGolfDate(todayStr());
     setGolfPars(Array(18).fill(4));
-    toast2("⛳ 스코어카드 저장됐어요!");
     setSubView(null);
+  };
+
+  const startEditGolfRound = (r) => {
+    setCourse(r.course || "");
+    setGolfDate(r.date || todayStr());
+    setGolfPars(Array.isArray(r.pars) ? [...r.pars] : Array(18).fill(4));
+    setScores(Array.isArray(r.scores) ? r.scores.map(s=>({...s})) : mkScores());
+    setGolfNote(r.note || "");
+    setEditingGolfId(r.id);
+    setSelGolfRound(null);
+    go("golf", "card");
+  };
+
+  const shareGolfRound = (r) => {
+    const diffStr = r.diff || "";
+    const front = Array.isArray(r.scores) ? r.scores.slice(0,9).map(h=>h.score||"-").join(" ") : "";
+    const back  = Array.isArray(r.scores) ? r.scores.slice(9,18).map(h=>h.score||"-").join(" ") : "";
+    const lines = [
+      `⛳ ${r.course}`,
+      `${fmtDate(r.date)}`,
+      `총 스코어: ${r.score}타 (${diffStr})`,
+      r.putts > 0 ? `총 퍼트: ${r.putts}` : "",
+      "",
+      `전반: ${front}`,
+      `후반: ${back}`,
+      r.note ? `\n메모: ${r.note}` : "",
+    ].filter(l => l !== "").join("\n");
+    if (navigator.share) {
+      navigator.share({title: r.course, text: lines}).catch(()=>{});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(lines).then(()=>toast2("📋 클립보드에 복사됐어요!")).catch(()=>toast2("공유를 지원하지 않는 환경입니다."));
+    } else { toast2("공유를 지원하지 않는 환경입니다."); }
   };
 
   const golfRoundCount = golfRounds.length;
@@ -872,9 +911,13 @@ export default function App() {
                 golfMonthGroups[key].push(r);
               });
               const sortedGolfMonthKeys = Object.keys(golfMonthGroups).sort().reverse();
-              const GolfCard = ({r})=>(
+              const GolfCard = ({r})=>{
+                const [open, setOpen] = useState(false);
+                const hasHoles = Array.isArray(r.scores)&&r.scores.some(h=>h.score);
+                return(
                 <div style={{background:crd,borderRadius:18,padding:18,border:`1px solid rgba(34,197,94,0.2)`,marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  {/* 상단: 코스 정보 + 스코어 */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:44,height:44,borderRadius:13,background:"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>⛳</div>
                       <div>
@@ -882,51 +925,62 @@ export default function App() {
                         <div style={{fontSize:11,color:sub,marginTop:2,fontFamily:F}}>{fmtDate(r.date)}</div>
                       </div>
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:26,fontWeight:900,color:"#FBBF24",fontFamily:F,lineHeight:1}}>{r.score}</div>
-                        <div style={{fontSize:12,fontWeight:700,color:r.diff&&r.diff.startsWith("-")?grn:org,fontFamily:F}}>{r.diff}</div>
-                      </div>
-                      <button onClick={()=>deleteGolfRound(r.id)} style={{background:"none",border:"1px solid #FF6B35",borderRadius:9,padding:"5px 10px",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:28,fontWeight:900,color:"#FBBF24",fontFamily:F,lineHeight:1}}>{r.score}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:r.diff&&r.diff.startsWith("-")?grn:org,fontFamily:F}}>{r.diff}</div>
                     </div>
                   </div>
-                  {/* 홀별 스코어 요약 */}
-                  {Array.isArray(r.scores)&&r.scores.some(h=>h.score)&&(
-                    <div style={{marginBottom:10}}>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:3}}>
-                        {r.scores.slice(0,9).map((h,k)=>(
-                          <div key={k} style={{textAlign:"center",fontSize:9,color:sub,fontFamily:F}}>{k+1}H</div>
-                        ))}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:4}}>
-                        {r.scores.slice(0,9).map((h,k)=>{
-                          const par=Array.isArray(r.pars)?r.pars[k]:4;
-                          const sc=parseInt(h.score);
-                          const color=!h.score?sub:sc-par<0?grn:sc-par===0?"#60A5FA":org;
-                          return <div key={k} style={{textAlign:"center",fontSize:13,fontWeight:800,color,fontFamily:F}}>{h.score||"·"}</div>;
-                        })}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:3}}>
-                        {r.scores.slice(9,18).map((h,k)=>(
-                          <div key={k} style={{textAlign:"center",fontSize:9,color:sub,fontFamily:F}}>{k+10}H</div>
-                        ))}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2}}>
-                        {r.scores.slice(9,18).map((h,k)=>{
-                          const par=Array.isArray(r.pars)?r.pars[k+9]:4;
-                          const sc=parseInt(h.score);
-                          const color=!h.score?sub:sc-par<0?grn:sc-par===0?"#60A5FA":org;
-                          return <div key={k} style={{textAlign:"center",fontSize:13,fontWeight:800,color,fontFamily:F}}>{h.score||"·"}</div>;
-                        })}
-                      </div>
+                  {/* 버튼 행 */}
+                  <div style={{display:"flex",gap:6,marginBottom: hasHoles&&open ? 14 : 0}}>
+                    <button onClick={()=>shareGolfRound(r)} style={{flex:1,background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"7px 0",color:"#60A5FA",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>공유</button>
+                    <button onClick={()=>setSelGolfRound(r)} style={{flex:1,background:"none",border:`1px solid ${bdr}`,borderRadius:9,padding:"7px 0",color:"#aaa",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>상세</button>
+                    <button onClick={()=>{if(hasHoles)setOpen(p=>!p);}} style={{flex:1,background:hasHoles?"none":"transparent",border:hasHoles?`1px solid rgba(34,197,94,0.3)`:"1px solid #222",borderRadius:9,padding:"7px 0",color:hasHoles?grn:"#333",fontSize:11,fontWeight:700,cursor:hasHoles?"pointer":"default",fontFamily:F}}>
+                      {hasHoles?(open?"접기 ▲":"홀별 ▼"):"홀별"}
+                    </button>
+                    <button onClick={()=>deleteGolfRound(r.id)} style={{flex:1,background:"none",border:"1px solid rgba(255,107,53,0.4)",borderRadius:9,padding:"7px 0",color:"#FF6B35",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:F}}>삭제</button>
+                  </div>
+                  {/* 홀별 스코어 펼침 */}
+                  {hasHoles&&open&&(
+                    <div style={{background:isLight?"#EAF2E6":"#0f0f0f",borderRadius:12,padding:"12px 10px"}}>
+                      {[{from:0,to:9,label:"전반"},{from:9,to:18,label:"후반"}].map(({from,to,label})=>{
+                        const sTotal=r.scores.slice(from,to).reduce((s,h)=>s+(parseInt(h.score)||0),0);
+                        return(
+                          <div key={label} style={{marginBottom:from===0?12:0}}>
+                            <div style={{fontSize:10,color:sub,fontWeight:700,marginBottom:6,fontFamily:F}}>▸ {label} ({from+1}~{to}홀)</div>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:2}}>
+                              {Array.from({length:9},(_,k)=><div key={k} style={{textAlign:"center",fontSize:9,color:"#444",fontFamily:F}}>{from+k+1}H</div>)}
+                            </div>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:2}}>
+                              {r.scores.slice(from,to).map((h,k)=>{
+                                const par=Array.isArray(r.pars)?r.pars[from+k]:4;
+                                const sc=parseInt(h.score);
+                                const color=!h.score?"#333":sc-par<0?grn:sc-par===0?"#60A5FA":org;
+                                return <div key={k} style={{textAlign:"center",fontSize:14,fontWeight:800,color,fontFamily:F}}>{h.score||"·"}</div>;
+                              })}
+                            </div>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2,marginBottom:2}}>
+                              {Array.isArray(r.pars)&&r.pars.slice(from,to).map((p,k)=><div key={k} style={{textAlign:"center",fontSize:9,color:"#FBBF24",fontFamily:F}}>{p}</div>)}
+                            </div>
+                            {r.scores.slice(from,to).some(h=>h.putts)&&(
+                              <div style={{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:2}}>
+                                {r.scores.slice(from,to).map((h,k)=><div key={k} style={{textAlign:"center",fontSize:9,color:"#60A5FA",fontFamily:F}}>{h.putts||""}</div>)}
+                              </div>
+                            )}
+                            <div style={{textAlign:"right",fontSize:11,color:sub,marginTop:4,fontFamily:F}}>{label} 합계 <span style={{color:tc,fontWeight:700}}>{sTotal||"-"}</span></div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {r.putts>0&&<span style={{background:"rgba(96,165,250,0.1)",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#60A5FA",fontWeight:600,fontFamily:F}}>퍼트 {r.putts}</span>}
-                    {r.note&&<span style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}}>{r.note}</span>}
-                  </div>
+                  {/* 메모 */}
+                  {r.note&&!open&&(
+                    <div style={{marginTop:10}}>
+                      <span style={{background:"#1E1E20",borderRadius:8,padding:"4px 10px",fontSize:11,color:"#888",fontWeight:600,fontFamily:F}}>{r.note}</span>
+                    </div>
+                  )}
                 </div>
-              );
+                );
+              };
               if(sortedGolf.length===0&&recFilter==="golf") return(
                 <div style={{background:crd,borderRadius:16,padding:20,textAlign:"center",color:sub,fontSize:13,marginBottom:12,fontFamily:F}}>저장된 골프 라운드가 없습니다</div>
               );
@@ -1451,6 +1505,84 @@ export default function App() {
           </div>
         )}
 
+        {/* GOLF ROUND 상세 모달 */}
+        {selGolfRound&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setSelGolfRound(null)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#141414",borderRadius:"24px 24px 0 0",padding:"20px 20px 40px",width:"100%",maxWidth:390,border:"1px solid #222",maxHeight:"85vh",overflowY:"auto"}}>
+              <div style={{width:40,height:4,borderRadius:2,background:"#333",margin:"0 auto 20px"}}/>
+              {/* 헤더 */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                <div>
+                  <div style={{fontSize:20,fontWeight:800,fontFamily:F,color:tc}}>{selGolfRound.course}</div>
+                  <div style={{fontSize:12,color:sub,marginTop:4,fontFamily:F}}>{fmtDate(selGolfRound.date)}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:36,fontWeight:900,color:"#FBBF24",fontFamily:F,lineHeight:1}}>{selGolfRound.score}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:selGolfRound.diff&&selGolfRound.diff.startsWith("-")?grn:org,fontFamily:F}}>{selGolfRound.diff}</div>
+                </div>
+              </div>
+              {/* 홀별 스코어 */}
+              {Array.isArray(selGolfRound.scores)&&selGolfRound.scores.some(h=>h.score)&&(
+                <div style={{background:"#0f0f0f",borderRadius:14,padding:"14px 12px",marginBottom:16}}>
+                  {[{from:0,to:9,label:"전반",color:grn},{from:9,to:18,label:"후반",color:"#FBBF24"}].map(({from,to,label,color})=>{
+                    const sTotal=selGolfRound.scores.slice(from,to).reduce((s,h)=>s+(parseInt(h.score)||0),0);
+                    const pTotal=selGolfRound.scores.slice(from,to).reduce((s,h)=>s+(parseInt(h.putts)||0),0);
+                    return(
+                      <div key={label} style={{marginBottom:from===0?16:0}}>
+                        <div style={{fontSize:11,color,fontWeight:700,marginBottom:8,fontFamily:F}}>▸ {label} ({from+1}~{to}홀)</div>
+                        <div style={{display:"grid",gridTemplateColumns:"32px repeat(9,1fr)",gap:2,marginBottom:3}}>
+                          <div/>
+                          {Array.from({length:9},(_,k)=><div key={k} style={{textAlign:"center",fontSize:9,color:"#444",fontFamily:F}}>{from+k+1}H</div>)}
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"32px repeat(9,1fr)",gap:2,marginBottom:3,alignItems:"center"}}>
+                          <div style={{fontSize:9,color:"#FBBF24",fontFamily:F}}>파</div>
+                          {Array.isArray(selGolfRound.pars)&&selGolfRound.pars.slice(from,to).map((p,k)=><div key={k} style={{textAlign:"center",fontSize:11,color:"#FBBF24",fontWeight:700,fontFamily:F}}>{p}</div>)}
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"32px repeat(9,1fr)",gap:2,marginBottom:3,alignItems:"center"}}>
+                          <div style={{fontSize:9,color:sub,fontFamily:F}}>타수</div>
+                          {selGolfRound.scores.slice(from,to).map((h,k)=>{
+                            const par=Array.isArray(selGolfRound.pars)?selGolfRound.pars[from+k]:4;
+                            const sc=parseInt(h.score);
+                            const col=!h.score?sub:sc-par<0?grn:sc-par===0?"#60A5FA":org;
+                            return <div key={k} style={{textAlign:"center",fontSize:16,fontWeight:800,color:col,fontFamily:F}}>{h.score||"·"}</div>;
+                          })}
+                        </div>
+                        {selGolfRound.scores.slice(from,to).some(h=>h.putts)&&(
+                          <div style={{display:"grid",gridTemplateColumns:"32px repeat(9,1fr)",gap:2,alignItems:"center"}}>
+                            <div style={{fontSize:9,color:sub,fontFamily:F}}>퍼트</div>
+                            {selGolfRound.scores.slice(from,to).map((h,k)=><div key={k} style={{textAlign:"center",fontSize:12,color:"#60A5FA",fontWeight:600,fontFamily:F}}>{h.putts||""}</div>)}
+                          </div>
+                        )}
+                        <div style={{display:"flex",justifyContent:"flex-end",gap:16,marginTop:6,fontSize:11,color:sub,fontFamily:F}}>
+                          <span>{label} <span style={{color:tc,fontWeight:700}}>{sTotal||"-"}타</span></span>
+                          {pTotal>0&&<span>퍼트 <span style={{color:"#60A5FA",fontWeight:700}}>{pTotal}</span></span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{borderTop:"1px solid #222",paddingTop:12,marginTop:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:13,color:sub,fontFamily:F}}>총 스코어</span>
+                    <div>
+                      <span style={{fontSize:26,fontWeight:900,color:"#FBBF24",fontFamily:F}}>{selGolfRound.score}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:selGolfRound.diff&&selGolfRound.diff.startsWith("-")?grn:org,marginLeft:8,fontFamily:F}}>{selGolfRound.diff}</span>
+                    </div>
+                  </div>
+                  {selGolfRound.putts>0&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:12,color:sub,fontFamily:F}}><span>총 퍼트</span><span style={{color:"#60A5FA",fontWeight:700}}>{selGolfRound.putts}</span></div>}
+                </div>
+              )}
+              {/* 메모 */}
+              {selGolfRound.note&&(
+                <div style={{background:"#1A1A1C",borderRadius:12,padding:"12px 14px",marginBottom:16,fontSize:13,color:"#aaa",fontFamily:F}}>{selGolfRound.note}</div>
+              )}
+              {/* 버튼 */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <button onClick={()=>startEditGolfRound(selGolfRound)} style={{padding:14,background:"rgba(34,197,94,0.1)",border:`1px solid rgba(34,197,94,0.3)`,borderRadius:14,color:grn,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>✏️ 수정</button>
+                <button onClick={()=>setSelGolfRound(null)} style={{padding:14,background:"#1A1A1C",border:`1px solid ${bdr}`,borderRadius:14,color:"#aaa",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>닫기</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* GOLF HOME */}
         {activeTab==="golf"&&subView===null&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
@@ -1491,7 +1623,8 @@ export default function App() {
         {/* GOLF SCORECARD */}
         {activeTab==="golf"&&subView==="card"&&(
           <div style={{padding:"0 20px",animation:"su 0.3s ease"}}>
-            <button onClick={()=>setSubView(null)} style={{background:"none",border:"none",color:grn,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
+            <button onClick={()=>{setSubView(null);if(editingGolfId){setEditingGolfId(null);setCourse("");setScores(mkScores());setGolfNote("");setGolfDate(todayStr());setGolfPars(Array(18).fill(4));}}} style={{background:"none",border:"none",color:grn,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0,fontFamily:F}}>← 뒤로</button>
+            {editingGolfId&&<div style={{background:"rgba(34,197,94,0.08)",border:`1px solid rgba(34,197,94,0.3)`,borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:grn,fontWeight:700,fontFamily:F}}>✏️ 라운드 수정 중</div>}
             <Crd style={{border:`1px solid rgba(34,197,94,0.2)`}}>
               <SL>라운드 정보</SL>
               <div style={{width:"100%",marginBottom:10,minWidth:0}}>
