@@ -331,10 +331,13 @@ export default function App() {
   };
 
   const handleStartWorkout = (r) => {
-    setWorkoutExercises(normalizeWorkoutExercises(r.exercises));
+    const normalized = normalizeWorkoutExercises(r.exercises);
+    setWorkoutExercises(normalized);
     setWorkoutSubType(r.subType || "upper");
     setWorkoutTitle(r.title || "");
-    setExCounters({});
+    const initialCounters = {};
+    normalized.forEach(ex => { initialCounters[ex.id] = ex.sets.length; });
+    setExCounters(initialCounters);
     setWorkoutDone(false);
     setWorkoutStarted(true);
     beginWorkoutClock();
@@ -812,9 +815,9 @@ export default function App() {
                       const adjYear=adjMonth<0?calendarYear-1:adjMonth>11?calendarYear+1:calendarYear;
                       const adjM=((adjMonth%12)+12)%12;
                       const ds=`${adjYear}-${String(adjM+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-                      const hasU=!isAdj&&upperDateSet.has(ds);
-                      const hasL=!isAdj&&lowerDateSet.has(ds);
-                      const hasG=!isAdj&&golfDateSet.has(ds);
+                      const hasU=upperDateSet.has(ds);
+                      const hasL=lowerDateSet.has(ds);
+                      const hasG=golfDateSet.has(ds);
                       const hasW=hasU||hasL||hasG;
                       const isToday=!isAdj&&d===tD&&calendarMonth===tM&&calendarYear===tY;
                       const isSel=!isAdj&&selectedCalDate===ds;
